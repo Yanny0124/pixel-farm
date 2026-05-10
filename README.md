@@ -50,19 +50,6 @@
 └── dist/pixel-farm/    # 生成的玩家版发布目录
 ```
 
-## 发布到 GitHub Pages
-
-推荐直接部署根目录：
-
-1. 把仓库推送到 GitHub。
-2. 打开仓库 `Settings`。
-3. 进入 `Pages`。
-4. `Source` 选择 `Deploy from a branch`。
-5. 分支选择 `main`，目录选择 `/root`。
-6. 保存后等待 GitHub 生成 Pages 地址。
-
-也可以只发布 `dist/pixel-farm` 目录中的玩家版文件。
-
 ## 存档说明
 
 存档保存在玩家浏览器的 `localStorage` 中。不同浏览器、不同电脑、不同部署地址之间不会自动共享存档。
