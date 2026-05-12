@@ -12,7 +12,7 @@ let skills = createDefaultSkills();
 let weather = { type: 'sunny', changedAt: Date.now(), forcedUntil: 0 };
 let talentPoints = 0;
 let talents = { agriculture: 0, husbandry: 0, industry: 0 };
-let stats = { harvests: {}, resonances: 0, totalOfflineSeconds: 0, totalPlaySeconds: 0, ordersCompleted: 0, weatherSeen: {}, rainSkillUsed: false, visitorTalks: 0 };
+let stats = { harvests: {}, resonances: 0, totalOfflineSeconds: 0, totalPlaySeconds: 0, ordersCompleted: 0, weatherSeen: {}, rainSkillUsed: false, visitorTalks: 0, visitorArrival: {} };
 let miracleBonuses = { irrigation: false, barn: false };
 let collectionBonuses = createDefaultCollectionBonuses();
 let collection = { items: {}, variants: {}, claimedRewards: {}, claimedSetRewards: {} };
@@ -41,6 +41,7 @@ let floatingTexts = [];
 let resonanceBursts = [];
 let offlineReturnFx = null;
 let screenShake = { until: 0, power: 0 };
+let uiPreferences = { screenShake: true };
 let lastSaveTimestamp = Date.now();
 let camera = { x: -(farmStartX - 50), y: -(farmStartY - 50), zoom: 1 };
 
@@ -78,7 +79,7 @@ function resetRuntimeState() {
     weather = { type: 'sunny', changedAt: Date.now(), forcedUntil: 0 };
     talentPoints = 0;
     talents = { agriculture: 0, husbandry: 0, industry: 0 };
-    stats = { harvests: {}, resonances: 0, totalOfflineSeconds: 0, totalPlaySeconds: 0, ordersCompleted: 0, weatherSeen: {}, rainSkillUsed: false, visitorTalks: 0 };
+    stats = { harvests: {}, resonances: 0, totalOfflineSeconds: 0, totalPlaySeconds: 0, ordersCompleted: 0, weatherSeen: {}, rainSkillUsed: false, visitorTalks: 0, visitorArrival: {} };
     miracleBonuses = { irrigation: false, barn: false };
     collectionBonuses = createDefaultCollectionBonuses();
     collection = { items: {}, variants: {}, claimedRewards: {}, claimedSetRewards: {} };
@@ -104,6 +105,7 @@ function resetRuntimeState() {
     resonanceBursts = [];
     offlineReturnFx = null;
     screenShake = { until: 0, power: 0 };
+    uiPreferences = { screenShake: true };
     camera = { x: -(farmStartX - 50), y: -(farmStartY - 50), zoom: 1 };
     lastSaveTimestamp = Date.now();
     initGrid();
@@ -561,6 +563,7 @@ function saveGame() {
         miracleState,
         endingState,
         audioEnabled,
+        uiPreferences,
         lastSaveTimestamp,
         camX: camera.x,
         camY: camera.y,
@@ -634,8 +637,9 @@ function loadGame() {
         weather = Object.assign({ type: 'sunny', changedAt: Date.now(), forcedUntil: 0 }, saveData.weather);
         talents = Object.assign({ agriculture: 0, husbandry: 0, industry: 0 }, saveData.talents);
         talentPoints = saveData.talentPoints || 0;
-        stats = Object.assign({ harvests: {}, resonances: 0, totalOfflineSeconds: 0, totalPlaySeconds: 0, ordersCompleted: 0, weatherSeen: {}, rainSkillUsed: false, visitorTalks: 0 }, saveData.stats);
+        stats = Object.assign({ harvests: {}, resonances: 0, totalOfflineSeconds: 0, totalPlaySeconds: 0, ordersCompleted: 0, weatherSeen: {}, rainSkillUsed: false, visitorTalks: 0, visitorArrival: {} }, saveData.stats);
         stats.weatherSeen = Object.assign({}, stats.weatherSeen);
+        stats.visitorArrival = Object.assign({}, stats.visitorArrival);
         miracleBonuses = Object.assign({ irrigation: false, barn: false }, saveData.miracleBonuses);
         collectionBonuses = Object.assign(createDefaultCollectionBonuses(), saveData.collectionBonuses);
         collectionBonuses.categoryGrowth = Object.assign({}, collectionBonuses.categoryGrowth);
@@ -667,6 +671,7 @@ function loadGame() {
         endingState.unlocked = Object.assign({}, endingState.unlocked);
         endingState.read = Object.assign({}, endingState.read);
         if (saveData.audioEnabled !== undefined) audioEnabled = saveData.audioEnabled;
+        uiPreferences = Object.assign({ screenShake: true }, saveData.uiPreferences);
         if (saveData.skills) {
             skills.sow.lastUsed = saveData.skills.sow.lastUsed || 0;
             skills.sow.level = saveData.skills.sow.level || 1;
@@ -733,4 +738,11 @@ window.resetGame = function() {
         saveGame();
         if (typeof updateUI === 'function') updateUI();
     }
+};
+
+window.toggleScreenShake = function(force) {
+    uiPreferences.screenShake = force === undefined ? !uiPreferences.screenShake : !!force;
+    effectText = uiPreferences.screenShake ? '震动反馈已开启' : '震动反馈已关闭';
+    effectAlpha = 1.0;
+    saveGame();
 };

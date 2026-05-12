@@ -10,16 +10,31 @@ function initRenderer() {
 }
 
 function renderFrame() {
-    const shake = Date.now() < screenShake.until ? screenShake.power : 0;
+    const shake = getSmoothShakeOffset();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
-    if (shake) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+    if (shake.x || shake.y) ctx.translate(shake.x, shake.y);
     drawFarm();
     drawWeatherLayer();
     drawOfflineReturnFx(ctx);
     drawCanvasUI(ctx);
     drawGlobalEffectText();
     ctx.restore();
+}
+
+function getSmoothShakeOffset() {
+    const now = Date.now();
+    if (!screenShake || now >= screenShake.until || uiPreferences?.screenShake === false) return { x: 0, y: 0 };
+    const duration = screenShake.duration || 80;
+    const elapsed = Math.max(0, duration - (screenShake.until - now));
+    const progress = Math.min(1, elapsed / duration);
+    const falloff = Math.pow(1 - progress, 2);
+    const wave = Math.sin(progress * Math.PI * 2);
+    const power = (screenShake.power || 1) * falloff;
+    return {
+        x: wave * power,
+        y: Math.sin(progress * Math.PI * 1.5) * power * 0.35
+    };
 }
 
 function drawFarm() {
@@ -58,6 +73,7 @@ function drawCropArea() {
             drawTile(r, c);
         }
     }
+    drawLargeMatureCrops();
     drawMatureResonanceLinks();
 }
 
@@ -95,12 +111,28 @@ function drawCropInTile(cell, x, y) {
         drawCropSprite(ctx, cell.cropType, stage, x, y, TILE_SIZE);
     } else if (cell.state === 2) {
         if (cell.cropType === 'pumpkin') {
-            drawCropSprite(ctx, cell.cropType, stageCount - 1, x, y, TILE_SIZE * 2);
+            return;
         } else {
             drawCropSprite(ctx, cell.cropType, stageCount - 1, x, y, TILE_SIZE);
         }
         ctx.strokeStyle = '#f1c40f';
-        ctx.strokeRect(x + 3, y + 3, cell.cropType === 'pumpkin' ? 84 : 39, cell.cropType === 'pumpkin' ? 84 : 39);
+        ctx.strokeRect(x + 3, y + 3, 39, 39);
+    }
+}
+
+function drawLargeMatureCrops() {
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            const cell = gridData[r][c];
+            if (cell.state !== 2 || cell.cropType !== 'pumpkin') continue;
+            const x = farmStartX + c * TILE_SIZE;
+            const y = farmStartY + r * TILE_SIZE;
+            const stageCount = CROP_CONFIG.pumpkin.stages || 5;
+            drawCropSprite(ctx, 'pumpkin', stageCount - 1, x, y, TILE_SIZE * 2);
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x + 3, y + 3, TILE_SIZE * 2 - 6, TILE_SIZE * 2 - 6);
+        }
     }
 }
 

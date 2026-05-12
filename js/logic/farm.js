@@ -77,11 +77,13 @@ function harvestCell(row, col, allowResonance = true, options = {}) {
     if (cell.state !== 2 || !cell.cropType) return 0;
     const cropType = cell.cropType;
     let targets = [{ row, col }];
+    let resonanceTriggered = false;
 
     if (allowResonance) {
         const cluster = findMatureCluster(row, col, cropType);
         if (cluster.length >= 3 && Math.random() < getResonanceChance()) {
             targets = cluster;
+            resonanceTriggered = true;
             stats.resonances = (stats.resonances || 0) + 1;
             effectText = `✨ 邻接共振！连收 ${cluster.length} 株 ${CROP_CONFIG[cropType].name}`;
             effectAlpha = 1.0;
@@ -126,7 +128,8 @@ function harvestCell(row, col, allowResonance = true, options = {}) {
 
     if (expGained > 0) addExp(expGained);
     if (expGained > 0) {
-        tryDiscoverVariant(cropType, targets.length);
+        const discoveredVariant = tryDiscoverVariant(cropType, targets.length);
+        applyHarvestShake(cropType, { resonanceTriggered, discoveredVariant, options });
         playSound(targets.length > 1 ? 'resonance' : 'harvest');
         recordDiary(`收获 ${CROP_CONFIG[cropType].name} x${targets.length}`);
     }
@@ -146,6 +149,27 @@ function rollHarvestWoodDrop(cropType, amount) {
     return wood;
 }
 
+function applyHarvestShake(cropType, context) {
+    if (context.options?.quiet) return;
+    if (context.resonanceTriggered) {
+        triggerScreenShake(130, 2.1, context.options);
+        return;
+    }
+    if (context.discoveredVariant) {
+        triggerScreenShake(95, 1.35, context.options);
+        return;
+    }
+    if (isHighValueHarvest(cropType)) {
+        triggerScreenShake(60, 0.75, context.options);
+    }
+}
+
+function isHighValueHarvest(cropType) {
+    const config = CROP_CONFIG[cropType];
+    if (!config) return false;
+    return !!config.rarity || config.basePrice >= 50 || !!config.noSell;
+}
+
 function clearLargeCropPlaceholders(row, col) {
     [[0, 1], [1, 0], [1, 1]].forEach(([dr, dc]) => {
         const cell = gridData[row + dr]?.[col + dc];
@@ -159,19 +183,21 @@ function clearLargeCropPlaceholders(row, col) {
 
 function tryDiscoverVariant(cropType, harvestedCount) {
     const progress = getVariantProgress(cropType);
-    if (progress.total === 0 || progress.found >= progress.total) return;
+    if (progress.total === 0 || progress.found >= progress.total) return false;
     const next = progress.variants.find(variant => isVariantReady(cropType, variant) && !(collection.variants[cropType] || {})[variant.id]);
-    if (!next) return;
+    if (!next) return false;
     let chance = next.chance || 0;
     chance += collectionBonuses.variantChance || 0;
     const finalChance = chance >= 1 ? 1 : Math.min(0.18, chance);
-    if (Math.random() > finalChance) return;
+    if (Math.random() > finalChance) return false;
     if (markVariantCollected(cropType, next.id)) {
         mutationState.pending[cropType] = next.cropId;
         effectText = `图鉴发现：${next.name}`;
         effectAlpha = 1.0;
         recordDiary(`发现变种：${next.name}`);
+        return true;
     }
+    return false;
 }
 
 function isVariantReady(cropType, variant) {

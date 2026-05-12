@@ -603,8 +603,8 @@ const VISITOR_CONFIG = {
         name: '阿米尔',
         icon: '🧳',
         role: '旅行商人',
-        unlockHint: '在线90分钟后不定期到访',
-        unlock: () => (stats.totalPlaySeconds || 0) >= 90 * 60,
+        unlockHint: '在线90分钟后开始随机到访，最多再等30分钟保底',
+        unlock: () => hasVisitorArrivedBySchedule('amir'),
         daily: ['价格会说话，只是说得不一定诚实。', '我喜欢加工品，也喜欢稀缺的动物产物。', '手里留一点现金，机会来时才抓得住。'],
         chain: [
             { title: '第一次以物易物', need: { strawberry: 5, milk: 3 }, reward: { codexNote: '远方之种', exp: 160 }, text: '我从山谷那边来。那边的土是红色的。种茶，不种麦。' },

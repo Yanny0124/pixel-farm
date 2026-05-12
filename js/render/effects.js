@@ -15,14 +15,17 @@ function spawnHarvestEffects(row, col, config, options = {}) {
         });
     }
     floatingTexts.push({ x, y, text: `+${config.icon}`, life: 90, color: '#f1c40f' });
-    if (!options.quiet && marketState[configKeyByName(config)]?.price > 50) {
-        screenShake.until = Date.now() + 80;
-        screenShake.power = 2;
-    }
 }
 
 function configKeyByName(config) {
     return Object.keys(CROP_CONFIG).find(key => CROP_CONFIG[key] === config);
+}
+
+function triggerScreenShake(duration = 80, power = 1.5, options = {}) {
+    if (options.quiet || uiPreferences?.screenShake === false) return;
+    screenShake.until = Date.now() + duration;
+    screenShake.duration = duration;
+    screenShake.power = power;
 }
 
 function spawnResonanceBurst(cluster, cropType) {

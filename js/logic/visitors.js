@@ -5,6 +5,8 @@ function ensureVisitorState(id) {
     if (!visitorState[id]) {
         visitorState[id] = { step: 0, resident: false, arrived: false, lastTalkIndex: 0 };
     }
+    if (!stats.visitorArrival) stats.visitorArrival = {};
+    if (!stats.visitorArrival[id]) stats.visitorArrival[id] = { eligibleSeconds: 0, checks: 0, lastChance: 0 };
     return visitorState[id];
 }
 
@@ -22,6 +24,67 @@ function isVisitorUnlocked(id) {
         return true;
     }
     return false;
+}
+
+function hasVisitorArrivedBySchedule(id) {
+    const state = ensureVisitorState(id);
+    return !!(state.arrived || state.resident);
+}
+
+function getVisitorArrivalInfo(id) {
+    ensureVisitorState(id);
+    return stats.visitorArrival?.[id] || { eligibleSeconds: 0, checks: 0, lastChance: 0 };
+}
+
+function getAmirArrivalChance() {
+    const info = getVisitorArrivalInfo('amir');
+    const eligibleMinutes = Math.floor((info.eligibleSeconds || 0) / 60);
+    if (eligibleMinutes >= 30) return 1;
+    return Math.min(0.8, 0.25 + Math.floor(eligibleMinutes / 5) * 0.1);
+}
+
+function arriveVisitor(id, reason = '') {
+    const state = ensureVisitorState(id);
+    if (state.arrived || state.resident) return false;
+    state.arrived = true;
+    const config = VISITOR_CONFIG[id];
+    if (config) {
+        effectText = `${config.icon} ${config.name} 到访了农场`;
+        effectAlpha = 1.0;
+        recordDiary(`${config.name}到访农场${reason ? `：${reason}` : ''}`, true);
+        playSound('talk');
+    }
+    if (window.refreshBitcnDomUi) window.refreshBitcnDomUi();
+    saveGame();
+    return true;
+}
+
+function updateVisitorArrivals(deltaSeconds) {
+    ensureVisitorState('amir');
+    const amirState = visitorState.amir;
+    if (amirState.arrived || amirState.resident) return;
+    if ((stats.totalPlaySeconds || 0) < 90 * 60) return;
+
+    const info = stats.visitorArrival.amir;
+    if (!info.migratedLegacy && (stats.totalPlaySeconds || 0) >= 120 * 60) {
+        info.eligibleSeconds = Math.max(info.eligibleSeconds || 0, 30 * 60);
+        info.migratedLegacy = true;
+    }
+    info.eligibleSeconds = (info.eligibleSeconds || 0) + deltaSeconds;
+    info.rollTimer = (info.rollTimer || 0) + deltaSeconds;
+    if (info.eligibleSeconds >= 30 * 60) {
+        info.lastChance = 1;
+        arriveVisitor('amir', '90分钟后等待满30分钟保底');
+        return;
+    }
+    if (info.rollTimer < 60) return;
+    info.rollTimer = 0;
+    info.checks = (info.checks || 0) + 1;
+    const chance = getAmirArrivalChance();
+    info.lastChance = chance;
+    if (Math.random() < chance) {
+        arriveVisitor('amir', `第${info.checks}次路过判定成功`);
+    }
 }
 
 function getVisitorProgress(id) {
@@ -49,6 +112,14 @@ function canDeliverVisitorTask(id) {
 
 function getVisitorStatusText(id) {
     const config = VISITOR_CONFIG[id];
+    if (id === 'amir' && !hasVisitorArrivedBySchedule('amir')) {
+        const played = stats.totalPlaySeconds || 0;
+        if (played < 90 * 60) return `还需在线 ${Math.ceil((90 * 60 - played) / 60)} 分钟后开始到访判定`;
+        const info = getVisitorArrivalInfo('amir');
+        const waited = Math.floor((info.eligibleSeconds || 0) / 60);
+        const chance = Math.round(getAmirArrivalChance() * 100);
+        return `正在路过判定：已等待 ${waited}/30 分钟，当前每分钟 ${chance}%`;
+    }
     if (!isVisitorUnlocked(id)) return config.unlockHint;
     const progress = getVisitorProgress(id);
     if (progress.finished) return '已入驻农场';

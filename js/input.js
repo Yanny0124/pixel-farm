@@ -90,6 +90,12 @@ function handleCanvasMouseDown(e) {
         return;
     }
 
+    const visitorId = getVisitorIconAtWorld(pos.worldX, pos.worldY);
+    if (visitorId) {
+        openVisitorJournal(visitorId);
+        return;
+    }
+
     if (['chicken', 'sheep', 'cow', 'bee', 'pig'].includes(currentSelectedTool)) {
         placeAnimal(pos.worldX, pos.worldY);
         return;
@@ -112,6 +118,33 @@ function getCanvasMouse(e) {
         x: (e.clientX - rect.left) * (canvas.width / rect.width),
         y: (e.clientY - rect.top) * (canvas.height / rect.height)
     };
+}
+
+function getVisitorIconAtWorld(worldX, worldY) {
+    if (typeof getVisitorIds !== 'function' || typeof isVisitorUnlocked !== 'function') return null;
+    const visitors = getVisitorIds().filter(isVisitorUnlocked);
+    const baseX = ranchStartX + 26;
+    const baseY = ranchStartY + ranchHeight + 54;
+    for (let index = 0; index < visitors.length; index++) {
+        const x = baseX + (index % 4) * 66;
+        const y = baseY + 14 + Math.floor(index / 4) * 48;
+        if (worldX >= x - 14 && worldX <= x + 32 && worldY >= y - 24 && worldY <= y + 34) {
+            return visitors[index];
+        }
+    }
+    return null;
+}
+
+function openVisitorJournal(visitorId) {
+    if (!window.uiState || !VISITOR_CONFIG[visitorId]) return;
+    uiState.activePanel = 'journal';
+    uiState.activeTabs.journal = 'visitors';
+    uiState.activeVisitor = visitorId;
+    uiState.visitorDialog = null;
+    uiState.settingsOpen = false;
+    uiState.scroll.journal = 0;
+    if (typeof markTutorialJournalOpened === 'function') markTutorialJournalOpened();
+    if (typeof window.refreshBitcnDomUi === 'function') window.refreshBitcnDomUi();
 }
 
 function placeAnimal(worldX, worldY) {
@@ -214,7 +247,21 @@ function handleMouseUp() {
 }
 
 function handleCanvasTouchStart(e) {
-    if (!e.touches || e.touches.length !== 1) return;
+    if (!e.touches || e.touches.length === 0) return;
+    if (e.touches.length >= 2) {
+        clearTimeout(touchInfoTimer);
+        const gesture = getTouchGesture(e.touches);
+        touchState = {
+            mode: 'pinch',
+            lastCenterX: gesture.centerX,
+            lastCenterY: gesture.centerY,
+            lastDistance: gesture.distance,
+            moved: true,
+            infoShown: false
+        };
+        e.preventDefault();
+        return;
+    }
     const touch = e.touches[0];
     const screen = getCanvasPointFromClient(touch.clientX, touch.clientY);
     const world = screenToWorldPoint(screen.x, screen.y);
@@ -239,7 +286,29 @@ function handleCanvasTouchStart(e) {
 }
 
 function handleCanvasTouchMove(e) {
-    if (!touchState || !e.touches || e.touches.length !== 1) return;
+    if (!touchState || !e.touches || e.touches.length === 0) return;
+    if (e.touches.length >= 2 || touchState.mode === 'pinch') {
+        clearTimeout(touchInfoTimer);
+        const gesture = getTouchGesture(e.touches);
+        if (touchState.lastDistance && gesture.distance > 0) {
+            const rect = canvas.getBoundingClientRect();
+            const zoom = camera.zoom || 1;
+            const dx = gesture.centerX - touchState.lastCenterX;
+            const dy = gesture.centerY - touchState.lastCenterY;
+            camera.x += dx * (canvas.width / rect.width) / zoom;
+            camera.y += dy * (canvas.height / rect.height) / zoom;
+            const center = getCanvasPointFromClient(gesture.centerX, gesture.centerY);
+            zoomCamera(gesture.distance / touchState.lastDistance, center.x, center.y);
+        }
+        touchState.mode = 'pinch';
+        touchState.moved = true;
+        touchState.lastCenterX = gesture.centerX;
+        touchState.lastCenterY = gesture.centerY;
+        touchState.lastDistance = gesture.distance;
+        e.preventDefault();
+        return;
+    }
+    if (e.touches.length !== 1) return;
     const touch = e.touches[0];
     const dx = touch.clientX - touchState.lastX;
     const dy = touch.clientY - touchState.lastY;
@@ -263,11 +332,34 @@ function handleCanvasTouchMove(e) {
 function handleCanvasTouchEnd(e) {
     clearTimeout(touchInfoTimer);
     if (!touchState) return;
+    if (touchState.mode === 'pinch') {
+        if (e.touches && e.touches.length === 1) {
+            const touch = e.touches[0];
+            const screen = getCanvasPointFromClient(touch.clientX, touch.clientY);
+            touchState = {
+                startX: touch.clientX,
+                startY: touch.clientY,
+                lastX: touch.clientX,
+                lastY: touch.clientY,
+                screen,
+                world: screenToWorldPoint(screen.x, screen.y),
+                moved: true,
+                infoShown: true
+            };
+        } else {
+            touchState = null;
+        }
+        e.preventDefault();
+        return;
+    }
     if (!touchState.moved && !touchState.infoShown) {
         const screen = touchState.screen;
         setCanvasUIMouse(screen.x, screen.y);
         if (!handleCanvasUIClick(screen.x, screen.y)) {
-            if (['chicken', 'sheep', 'cow', 'bee', 'pig'].includes(currentSelectedTool)) {
+            const visitorId = getVisitorIconAtWorld(touchState.world.x, touchState.world.y);
+            if (visitorId) {
+                openVisitorJournal(visitorId);
+            } else if (['chicken', 'sheep', 'cow', 'bee', 'pig'].includes(currentSelectedTool)) {
                 placeAnimal(touchState.world.x, touchState.world.y);
             } else {
                 interactWithFarm(touchState.world.x, touchState.world.y);
@@ -285,5 +377,17 @@ function getCanvasPointFromClient(clientX, clientY) {
     return {
         x: (clientX - rect.left) * (canvas.width / rect.width),
         y: (clientY - rect.top) * (canvas.height / rect.height)
+    };
+}
+
+function getTouchGesture(touches) {
+    const first = touches[0];
+    const second = touches[1] || touches[0];
+    const centerX = (first.clientX + second.clientX) / 2;
+    const centerY = (first.clientY + second.clientY) / 2;
+    return {
+        centerX,
+        centerY,
+        distance: Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY)
     };
 }

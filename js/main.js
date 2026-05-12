@@ -17,6 +17,7 @@ function updateLogic() {
     updateCrops(now);
     updateAnimals(now);
     updateProcessing(now);
+    updateVisitorArrivals(deltaSeconds);
     updateWorkers(now);
     updateSkillButtons(now);
     updateEffects();
@@ -41,6 +42,7 @@ function updateSkillButtons(now) {
 function gameLoop() {
     updateLogic();
     renderFrame();
+    if (typeof window.refreshBitcnDomUi === 'function') window.refreshBitcnDomUi();
     requestAnimationFrame(gameLoop);
 }
 

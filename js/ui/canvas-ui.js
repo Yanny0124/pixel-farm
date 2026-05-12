@@ -18,7 +18,7 @@ const UI_CONTENT = {
 const UI_CONTENT_PAD_TOP = 22;
 const UI_SETTINGS = {
     get w() { return 360; },
-    get h() { return 238; },
+    get h() { return 288; },
     get x() { return canvas.width - this.w - 24; },
     get y() { return 66; }
 };
@@ -34,6 +34,27 @@ const UI_NAV = [
     { id: 'build', icon: '⚒️', label: '建造' },
     { id: 'market', icon: '📈', label: '市场' }
 ];
+const UI_THEME = {
+    ink: '#314238',
+    text: '#536257',
+    muted: '#7b8b7f',
+    panel: 'rgba(255, 249, 226, 0.98)',
+    panelSoft: 'rgba(246, 239, 207, 0.95)',
+    header: '#83a86f',
+    headerDark: '#587456',
+    border: '#6f8f69',
+    borderSoft: '#b7c9a6',
+    button: '#78a866',
+    buttonHover: '#8aba74',
+    buttonDisabled: '#b1b9aa',
+    warn: '#e0aa3e',
+    danger: '#c96b55',
+    blue: '#6b9db0',
+    purple: '#9a78ad',
+    cream: '#fff7d2',
+    card: '#fffdf0',
+    shadow: 'rgba(72, 92, 59, 0.24)'
+};
 
 let uiState = {
     activePanel: null,
@@ -72,8 +93,8 @@ function drawCanvasUI(ctx) {
 }
 
 function drawStatusHUD(ctx) {
-    drawRoundRect(ctx, 14, 10, canvas.width - 28, 46, 8, 'rgba(248, 249, 244, 0.9)', '#5d6d5f');
-    ctx.fillStyle = '#263238';
+    drawRoundRect(ctx, 14, 10, canvas.width - 28, 46, 8, UI_THEME.panel, UI_THEME.border);
+    ctx.fillStyle = UI_THEME.ink;
     ctx.font = 'bold 17px Arial';
     ctx.textAlign = 'left';
     ctx.fillText(`💰 ${coins}`, 32, 39);
@@ -85,7 +106,7 @@ function drawStatusHUD(ctx) {
     ctx.fillText(`工具 ${getToolLabel(currentSelectedTool)}`, 868, 39);
     ctx.fillText(`视野 ${Math.round((camera.zoom || 1) * 100)}%`, canvas.width - 360, 39);
     ctx.textAlign = 'right';
-    ctx.fillText('滚轮缩放 / Space拖拽', canvas.width - 72, 39);
+    ctx.fillText('滚轮/双指缩放 · Space拖拽', canvas.width - 72, 39);
     drawSmallButton(ctx, 'settings-toggle', canvas.width - 54, 16, 32, 28, '⚙', () => toggleSettings(), '#607d6f');
 }
 
@@ -96,8 +117,8 @@ function drawTutorialGuide(ctx) {
     const y = 66;
     const w = 344;
     const h = 128;
-    drawRoundRect(ctx, x, y, w, h, 10, 'rgba(248, 249, 244, 0.94)', '#607d6f');
-    ctx.fillStyle = '#607d6f';
+    drawRoundRect(ctx, x, y, w, h, 10, UI_THEME.panel, UI_THEME.border);
+    ctx.fillStyle = UI_THEME.button;
     ctx.fillRect(x, y, 6, h);
     drawTextLine(ctx, `新手目标 ${step.index}/5`, x + 18, y + 28, '#2c3e50', 'bold 14px Arial');
     drawTextLine(ctx, step.title, x + 18, y + 54, '#263238', 'bold 16px Arial');
@@ -175,14 +196,14 @@ function drawSkillDock(ctx) {
 function drawZoomDock(ctx) {
     const x = 20;
     const y = 300;
-    drawRoundRect(ctx, x - 8, y - 8, 148, 146, 10, 'rgba(38, 50, 56, 0.88)', '#8fa39a');
+    drawRoundRect(ctx, x - 8, y - 8, 190, 168, 10, 'rgba(38, 50, 56, 0.82)', '#8fa39a');
     ctx.fillStyle = '#ecf0f1';
     ctx.font = 'bold 14px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('视野缩放', x + 66, y + 18);
-    drawSmallButton(ctx, 'zoom-in', x, y + 32, 58, 34, '+', () => zoomCamera(1.12), '#2980b9');
-    drawSmallButton(ctx, 'zoom-out', x + 74, y + 32, 58, 34, '-', () => zoomCamera(1 / 1.12), '#2980b9');
-    drawSmallButton(ctx, 'zoom-reset', x, y + 80, 132, 34, `${Math.round((camera.zoom || 1) * 100)}%`, () => resetCameraZoom(), '#7f8c8d');
+    ctx.fillText('视野缩放', x + 87, y + 18);
+    drawSmallButton(ctx, 'zoom-in', x, y + 32, 82, 44, '+', () => zoomCamera(1.18), '#2980b9');
+    drawSmallButton(ctx, 'zoom-out', x + 94, y + 32, 82, 44, '-', () => zoomCamera(1 / 1.18), '#2980b9');
+    drawSmallButton(ctx, 'zoom-reset', x, y + 90, 176, 42, `${Math.round((camera.zoom || 1) * 100)}%`, () => resetCameraZoom(), '#7f8c8d');
 }
 
 function drawSettingsPanel(ctx) {
@@ -205,7 +226,9 @@ function drawSettingsPanel(ctx) {
     }, '#27ae60');
     drawSmallButton(ctx, 'setting-reset-zoom', x + 184, y + 124, 142, 34, '重置视野', () => resetCameraZoom(), '#2980b9');
     drawSmallButton(ctx, 'setting-audio', x + 22, y + 174, 142, 34, audioEnabled ? '音效 开' : '音效 关', () => toggleAudio(), audioEnabled ? '#27ae60' : '#95a5a6');
-    drawSmallButton(ctx, 'setting-reset-game', x + 184, y + 174, 142, 34, '重置世界', () => resetGame(), '#e74c3c');
+    drawSmallButton(ctx, 'setting-shake', x + 184, y + 174, 142, 34, uiPreferences?.screenShake === false ? '震动 关' : '震动 开', () => toggleScreenShake(), uiPreferences?.screenShake === false ? '#95a5a6' : '#27ae60');
+    drawTextLine(ctx, '关闭后收割、共振、稀有发现都不会晃动画面。', x + 22, y + 226, '#607d6f', '13px Arial');
+    drawSmallButton(ctx, 'setting-reset-game', x + 184, y + 238, 142, 34, '重置世界', () => resetGame(), '#e74c3c');
 }
 
 function drawOrderDock(ctx) {
@@ -708,6 +731,9 @@ function drawVisitorDetailCard(ctx, id, x, y, w, h, config, unlocked, progress, 
     ctx.font = '14px Arial';
     ctx.fillStyle = '#607d6f';
     ctx.fillText(unlocked ? config.role : config.unlockHint, x + 74, y + 64);
+    if (id === 'amir' && !unlocked) {
+        drawTextLine(ctx, getVisitorStatusText(id), x + 74, y + 88, '#607d6f', 'bold 13px Arial');
+    }
     drawRoundRect(ctx, x + w - 124, y + 22, 96, 28, 14, progress.finished ? '#27ae60' : ready ? '#f39c12' : '#607d6f', null);
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 13px Arial';
@@ -723,7 +749,8 @@ function drawVisitorDetailCard(ctx, id, x, y, w, h, config, unlocked, progress, 
         ctx.font = 'bold 15px Arial';
         ctx.fillText('当前委托', x + 24, y + 104);
         if (!unlocked) {
-        drawWrappedText(ctx, config.unlockHint, x + 24, y + 136, w - 48, 24, '#53645c', '14px Arial');
+            const statusText = id === 'amir' ? getVisitorStatusText(id) : config.unlockHint;
+            drawWrappedText(ctx, statusText, x + 24, y + 136, w - 48, 24, '#53645c', '14px Arial');
         } else if (progress.finished) {
             drawWrappedText(ctx, '任务链已完成。访客已经入驻农场，后续会解锁更多日常对话和特殊事件。', x + 24, y + 136, w - 48, 25, '#53645c', '14px Arial');
         } else {
@@ -1351,6 +1378,9 @@ function registerButton(id, x, y, w, h, action) {
 }
 
 function handleCanvasUIClick(x, y) {
+    if (window.__bitcnDomMode) {
+        return !!(uiState.activeStoryPopup || uiState.settingsOpen);
+    }
     if (uiState.activeStoryPopup) {
         for (let i = uiState.buttons.length - 1; i >= 0; i--) {
             const button = uiState.buttons[i];
@@ -1361,6 +1391,17 @@ function handleCanvasUIClick(x, y) {
         }
         return true;
     }
+    if (uiState.settingsOpen) {
+        for (let i = uiState.buttons.length - 1; i >= 0; i--) {
+            const button = uiState.buttons[i];
+            if (!isSettingsButtonId(button.id)) continue;
+            if (!isPointInRect(x, y, button.x, button.y, button.w, button.h)) continue;
+            if (button.action) button.action();
+            return true;
+        }
+        if (isPointInRect(x, y, UI_SETTINGS.x, UI_SETTINGS.y, UI_SETTINGS.w, UI_SETTINGS.h)) return true;
+        return true;
+    }
     for (let i = uiState.buttons.length - 1; i >= 0; i--) {
         const button = uiState.buttons[i];
         if (!isPointInRect(x, y, button.x, button.y, button.w, button.h)) continue;
@@ -1368,13 +1409,18 @@ function handleCanvasUIClick(x, y) {
         return true;
     }
     if (uiState.activeMarketInput) commitMarketInput();
-    if (uiState.settingsOpen && isPointInRect(x, y, UI_SETTINGS.x, UI_SETTINGS.y, UI_SETTINGS.w, UI_SETTINGS.h)) return true;
     if (uiState.activePanel && isPointInRect(x, y, UI_PANEL.x, UI_PANEL.y, UI_PANEL.w, UI_PANEL.h)) return true;
     return false;
 }
 
+function isSettingsButtonId(id) {
+    return id === 'close-settings' || id.startsWith('setting-');
+}
+
 function handleCanvasUIWheel(x, y, deltaY) {
+    if (window.__bitcnDomMode) return false;
     if (uiState.activeStoryPopup) return true;
+    if (uiState.settingsOpen) return true;
     if (!uiState.activePanel && !uiState.settingsOpen && isPointInRect(x, y, UI_ORDER_DOCK.x, UI_ORDER_DOCK.y, UI_ORDER_DOCK.w, UI_ORDER_DOCK.h)) {
         const maxScroll = getOrderDockMaxScroll();
         uiState.orderDockScroll = Math.max(0, Math.min(maxScroll, uiState.orderDockScroll + Math.sign(deltaY) * 32));
@@ -1443,6 +1489,9 @@ function closePanel() {
     uiState.activePanel = null;
 }
 
+window.togglePanel = togglePanel;
+window.closePanel = closePanel;
+
 function changeMarketAmount(id, delta) {
     const max = Math.max(1, inventory[id] || 0);
     uiState.marketAmounts[id] = Math.max(1, Math.min(max, (uiState.marketAmounts[id] || 1) + delta));
@@ -1477,15 +1526,26 @@ function openVisitorTalk(id) {
     if (!isVisitorUnlocked(id)) return;
     uiState.activeVisitor = id;
     const config = VISITOR_CONFIG[id];
+    const progress = getVisitorProgress(id);
     const line = getVisitorTalkLine(id);
     uiState.visitorDialog = { id, line };
-    effectText = `${config.icon} ${config.name}正在聊天`;
+    stats.visitorTalks = (stats.visitorTalks || 0) + 1;
+    if (id === 'leo' && progress.finished) {
+        stats.leoRandomTalks = Math.min(3, (stats.leoRandomTalks || 0) + 1);
+    }
+    checkStoryUnlocks(false);
+    checkSeedUnlocks(false);
+    const leoHint = id === 'leo' && progress.finished && (stats.leoRandomTalks || 0) < 3
+        ? ` ${stats.leoRandomTalks}/3`
+        : '';
+    effectText = `${config.icon} ${config.name}正在聊天${leoHint}`;
     effectAlpha = 0.8;
     playSound('talk');
     saveGame();
 }
 
 function handleCanvasUIKeyDown(e) {
+    if (window.__bitcnDomMode) return false;
     if (!uiState.activeMarketInput) return false;
     if (/^\d$/.test(e.key)) {
         uiState.marketDraft = (uiState.marketDraft + e.key).replace(/^0+(\d)/, '$1').slice(0, 4);
@@ -1640,3 +1700,1488 @@ function lightenColor(color) {
     };
     return map[color] || color;
 }
+
+// DOM control handoff.
+// Buttons and tabs should not be painted on Canvas anymore. Canvas only reports
+// their hit boxes and callbacks; js/ui/bitcn-dom-ui.js renders the actual UI.
+const drawCanvasUIBeforeDomControlsFinal = drawCanvasUI;
+drawCanvasUI = function drawCanvasUI(ctx) {
+    window.__bitcnControls = [];
+    drawCanvasUIBeforeDomControlsFinal(ctx);
+};
+
+function registerDomControl(id, x, y, w, h, label, action, options = {}) {
+    if (typeof isClippedContentControl === 'function' && isClippedContentControl(id, y, h)) return;
+    const disabled = !action || options.disabled;
+    const freeControl = id.startsWith('tab-') || id.startsWith('setting-') || id === 'settings-toggle' || id === 'close-settings' || id === 'close-panel';
+    const clip = uiState.activePanel && !freeControl ? {
+        x: UI_CONTENT.x,
+        y: UI_CONTENT.y,
+        w: UI_CONTENT.w,
+        h: UI_CONTENT.h
+    } : null;
+    registerButton(id, x, y, w, h, disabled ? null : action);
+    window.__bitcnControls = window.__bitcnControls || [];
+    window.__bitcnControls.push({
+        id,
+        x,
+        y,
+        w,
+        h,
+        label: String(label || ''),
+        action: disabled ? null : action,
+        disabled,
+        kind: options.kind || 'button',
+        active: !!options.active,
+        danger: !!options.danger,
+        compact: !!options.compact,
+        clip
+    });
+}
+
+drawSmallButton = function drawSmallButton(ctx, id, x, y, w, h, label, action, color = UI_THEME.button) {
+    registerDomControl(id, x, y, w, h, label, action, {
+        danger: color === UI_THEME.danger || color === '#e74c3c',
+        disabled: color === '#95a5a6' || color === UI_THEME.buttonDisabled,
+        compact: w <= 52 || h <= 30
+    });
+};
+
+drawMultiLineButton = function drawMultiLineButton(ctx, id, x, y, w, h, label, action, color = UI_THEME.button) {
+    registerDomControl(id, x, y, w, h, String(label || '').replace(/\n/g, ' '), action, {
+        disabled: color === '#95a5a6' || color === UI_THEME.buttonDisabled,
+        compact: w <= 90 || h <= 38
+    });
+};
+
+drawIconSmallButton = function drawIconSmallButton(ctx, id, x, y, w, h, icon, action, color = UI_THEME.button) {
+    const iconLabels = { close: 'x', gear: '设置', check: 'ok', lock: '锁' };
+    registerDomControl(id, x, y, w, h, iconLabels[icon] || '', action, {
+        danger: icon === 'close' || color === UI_THEME.danger,
+        disabled: color === '#95a5a6' || color === UI_THEME.buttonDisabled,
+        compact: true
+    });
+};
+
+drawPixelIconButton = function drawPixelIconButton(ctx, id, x, y, w, h, icon, label, action, active = false) {
+    registerDomControl(id, x, y, w, h, label, action, {
+        active,
+        kind: 'nav'
+    });
+};
+
+drawTabs = function drawTabs(ctx, panelId, tabs, x, y) {
+    let cursorX = x;
+    tabs.forEach(([id, label]) => {
+        const width = Math.max(70, label.length * 16 + 26);
+        registerDomControl(`tab-${panelId}-${id}`, cursorX, y, width, 30, label, () => {
+            uiState.activeTabs[panelId] = id;
+            if (panelId === 'codex') uiState.scroll.journal = 0;
+            else uiState.scroll[panelId] = 0;
+        }, {
+            active: uiState.activeTabs[panelId] === id,
+            kind: 'tab',
+            compact: true
+        });
+        cursorX += width + 8;
+    });
+};
+
+const drawUIPanelBeforeExternalDomPanels = drawUIPanel;
+drawUIPanel = function drawUIPanel(ctx, panelId) {
+    if (panelId === 'market') return;
+    drawUIPanelBeforeExternalDomPanels(ctx, panelId);
+};
+
+const drawUIPanelBeforeDomMarket = drawUIPanel;
+drawUIPanel = function drawUIPanel(ctx, panelId) {
+    if (panelId === 'market') return;
+    drawUIPanelBeforeDomMarket(ctx, panelId);
+};
+
+function drawCanvasUI(ctx) {
+    uiState.buttons = [];
+    drawStatusHUD(ctx);
+    drawTileTip(ctx);
+    if (uiState.activePanel) drawUIPanel(ctx, uiState.activePanel);
+    drawSkillDock(ctx);
+    drawZoomDock(ctx);
+    if (!uiState.activePanel && !uiState.settingsOpen) drawOrderDock(ctx);
+    if (uiState.settingsOpen) drawSettingsPanel(ctx);
+    if (!uiState.activePanel && !uiState.settingsOpen && !uiState.activeStoryPopup) drawTutorialGuide(ctx);
+    drawBottomNav(ctx);
+    drawStoryPopup(ctx);
+}
+
+function drawStatusHUD(ctx) {
+    draw8BitFrame(ctx, 14, 10, canvas.width - 28, 46, 'rgba(255, 250, 229, 0.95)', UI_THEME.border, false);
+    drawPixelIcon(ctx, 'coin', 30, 17, 1.45);
+    drawPixelIcon(ctx, 'clock', 394, 17, 1.35);
+    ctx.fillStyle = UI_THEME.ink;
+    ctx.font = 'bold 17px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${coins}`, 60, 39);
+    ctx.fillText(`Lv.${playerLevel}`, 146, 39);
+    ctx.fillText(`EXP ${playerExp}/${getMaxExp()}`, 226, 39);
+    ctx.fillText(`${getClockLabel()}`, 424, 39);
+    ctx.fillText(`${WEATHER_CONFIG[weather.type].icon} ${WEATHER_CONFIG[weather.type].name}`, 570, 39);
+    ctx.fillText(`生长 ${Math.round(getGrowthMultiplier() * 100)}%`, 718, 39);
+    ctx.fillText(`工具 ${getToolLabel(currentSelectedTool)}`, 868, 39);
+    ctx.fillText(`视野 ${Math.round((camera.zoom || 1) * 100)}%`, canvas.width - 360, 39);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = UI_THEME.text;
+    ctx.fillText('双指缩放 · 长按看地块', canvas.width - 72, 39);
+    drawIconSmallButton(ctx, 'settings-toggle', canvas.width - 54, 16, 32, 28, 'gear', () => toggleSettings(), UI_THEME.header);
+}
+
+function drawBottomNav(ctx) {
+    const nav = [
+        { id: 'journal', icon: 'book', label: '手札' },
+        { id: 'seeds', icon: 'package', label: '种子' },
+        { id: 'build', icon: 'hammer', label: '建造' },
+        { id: 'market', icon: 'market', label: '市场' }
+    ];
+    const y = canvas.height - UI_BAR_HEIGHT + 8;
+    const itemW = Math.min(190, Math.max(145, Math.floor((canvas.width - 250) / nav.length)));
+    const gap = 18;
+    const startX = (canvas.width - (itemW * nav.length + gap * (nav.length - 1))) / 2;
+    draw8BitFrame(ctx, startX - 18, y - 6, itemW * nav.length + gap * (nav.length - 1) + 36, 58, 'rgba(230, 238, 199, 0.92)', UI_THEME.border, true);
+    nav.forEach((item, index) => {
+        const x = startX + index * (itemW + gap);
+        drawPixelIconButton(ctx, `nav-${item.id}`, x, y, itemW, 42, item.icon, item.label, () => togglePanel(item.id), uiState.activePanel === item.id);
+    });
+}
+
+function drawUIPanel(ctx, panelId) {
+    const titles = { journal: '手札', seeds: '种子', build: '建造', orders: '订单', market: '市场' };
+    const icons = { journal: 'book', seeds: 'package', build: 'hammer', orders: 'order', market: 'market' };
+    const title = titles[panelId] || '';
+    draw8BitFrame(ctx, UI_PANEL.x, UI_PANEL.y, UI_PANEL.w, UI_PANEL.h, UI_THEME.panel, UI_THEME.border, true);
+    draw8BitHeader(ctx, UI_PANEL.x, UI_PANEL.y, UI_PANEL.w, 48, UI_THEME.header, UI_THEME.headerDark);
+    drawPixelIcon(ctx, icons[panelId] || 'book', UI_PANEL.x + 18, UI_PANEL.y + 8, 1.8);
+    ctx.fillStyle = '#fffaf0';
+    ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(title, UI_PANEL.x + 56, UI_PANEL.y + 30);
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#f7ecd1';
+    ctx.fillText('内容较多时可滚动', UI_PANEL.x + UI_PANEL.w - 58, UI_PANEL.y + 29);
+    drawIconSmallButton(ctx, 'close-panel', UI_PANEL.x + UI_PANEL.w - 42, UI_PANEL.y + 9, 28, 26, 'close', () => closePanel(), UI_THEME.danger);
+    drawPanelTabs(ctx, panelId);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(UI_CONTENT.x, UI_CONTENT.y, UI_CONTENT.w, UI_CONTENT.h);
+    ctx.clip();
+    if (panelId === 'journal') drawJournalPanel(ctx);
+    if (panelId === 'seeds') drawSeedsPanel(ctx);
+    if (panelId === 'build') drawBuildPanel(ctx);
+    if (panelId === 'orders') drawOrdersPanel(ctx);
+    if (panelId === 'market') drawMarketPanel(ctx);
+    ctx.restore();
+    drawScrollHint(ctx, panelId);
+}
+
+function drawSettingsPanel(ctx) {
+    const x = UI_SETTINGS.x;
+    const y = UI_SETTINGS.y;
+    draw8BitFrame(ctx, x, y, UI_SETTINGS.w, UI_SETTINGS.h, UI_THEME.panel, UI_THEME.border, true);
+    draw8BitHeader(ctx, x, y, UI_SETTINGS.w, 44, UI_THEME.header, UI_THEME.headerDark);
+    drawPixelIcon(ctx, 'gear', x + 16, y + 9, 1.6);
+    ctx.fillStyle = '#fffaf0';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('设置', x + 48, y + 27);
+    drawIconSmallButton(ctx, 'close-settings', x + UI_SETTINGS.w - 42, y + 8, 28, 26, 'close', () => toggleSettings(false), UI_THEME.danger);
+    drawTextLine(ctx, `当前时间：${getClockLabel()}`, x + 22, y + 72, UI_THEME.ink, '15px Arial');
+    drawTextLine(ctx, `当前视野：${Math.round((camera.zoom || 1) * 100)}%`, x + 22, y + 98, UI_THEME.ink, '15px Arial');
+    drawSmallButton(ctx, 'setting-save', x + 22, y + 124, 142, 34, '手动保存', () => {
+        saveGame();
+        effectText = '已保存';
+        effectAlpha = 1.0;
+    }, UI_THEME.button);
+    drawSmallButton(ctx, 'setting-reset-zoom', x + 184, y + 124, 142, 34, '重置视野', () => resetCameraZoom(), UI_THEME.blue);
+    drawSmallButton(ctx, 'setting-audio', x + 22, y + 174, 142, 34, audioEnabled ? '音效 开' : '音效 关', () => toggleAudio(), audioEnabled ? UI_THEME.button : UI_THEME.buttonDisabled);
+    drawSmallButton(ctx, 'setting-shake', x + 184, y + 174, 142, 34, uiPreferences?.screenShake === false ? '震动 关' : '震动 开', () => toggleScreenShake(), uiPreferences?.screenShake === false ? UI_THEME.buttonDisabled : UI_THEME.button);
+    drawTextLine(ctx, '关闭后收割、共振、稀有发现都不会晃动画面。', x + 22, y + 226, UI_THEME.muted, '13px Arial');
+    drawSmallButton(ctx, 'setting-reset-game', x + 184, y + 238, 142, 34, '重置世界', () => resetGame(), UI_THEME.danger);
+}
+
+function getPanelIcon(id) {
+    const icons = { journal: '', seeds: '', build: '', orders: '', market: '' };
+    return icons[id] || '';
+}
+
+window.uiState = uiState;
+
+var FARM_UI = {
+    ink: '#3f2f24',
+    text: '#5f4a35',
+    muted: '#8a7356',
+    paper: 'rgba(255, 232, 166, 0.98)',
+    paper2: '#f7d58f',
+    wood: '#b46b3a',
+    woodDark: '#6f3d25',
+    woodLight: '#d99155',
+    green: '#5c9a4d',
+    greenDark: '#356735',
+    gold: '#f3ba3f',
+    goldLight: '#ffd96d',
+    red: '#b94d3e',
+    blue: '#4f8fad',
+    disabled: '#b9a88c',
+    shadow: 'rgba(54, 36, 24, 0.34)'
+};
+
+function draw8BitFrame(ctx, x, y, w, h, fill = FARM_UI.paper, border = FARM_UI.woodDark, shadow = true) {
+    if (shadow) {
+        ctx.fillStyle = FARM_UI.shadow;
+        ctx.fillRect(x + 6, y + 7, w, h);
+    }
+    ctx.fillStyle = border;
+    ctx.fillRect(x + 8, y, w - 16, 6);
+    ctx.fillRect(x + 8, y + h - 6, w - 16, 6);
+    ctx.fillRect(x, y + 8, 6, h - 16);
+    ctx.fillRect(x + w - 6, y + 8, 6, h - 16);
+    ctx.fillRect(x + 6, y + 6, 8, 8);
+    ctx.fillRect(x + w - 14, y + 6, 8, 8);
+    ctx.fillRect(x + 6, y + h - 14, 8, 8);
+    ctx.fillRect(x + w - 14, y + h - 14, 8, 8);
+    ctx.fillStyle = fill;
+    ctx.fillRect(x + 6, y + 6, w - 12, h - 12);
+    ctx.fillStyle = 'rgba(255,255,255,0.28)';
+    ctx.fillRect(x + 10, y + 10, w - 20, 4);
+    ctx.fillStyle = 'rgba(92,55,31,0.16)';
+    ctx.fillRect(x + 10, y + h - 14, w - 20, 4);
+}
+
+function draw8BitHeader(ctx, x, y, w, h, fill = FARM_UI.wood, border = FARM_UI.woodDark) {
+    ctx.fillStyle = border;
+    ctx.fillRect(x + 8, y, w - 16, h);
+    ctx.fillRect(x, y + 8, w, h - 8);
+    ctx.fillStyle = fill;
+    ctx.fillRect(x + 8, y + 6, w - 16, h - 10);
+    ctx.fillRect(x + 6, y + 12, w - 12, h - 16);
+    ctx.fillStyle = FARM_UI.woodLight;
+    for (let px = x + 22; px < x + w - 22; px += 34) ctx.fillRect(px, y + 6, 10, h - 10);
+    ctx.fillStyle = 'rgba(80,45,25,0.22)';
+    ctx.fillRect(x + 8, y + h - 8, w - 16, 4);
+}
+
+function drawFarmButtonSurface(ctx, x, y, w, h, fill, border, pressed = false) {
+    const dy = pressed ? 3 : 0;
+    const unit = h <= 30 ? 4 : 6;
+    if (!pressed) {
+        ctx.fillStyle = 'rgba(54, 36, 24, 0.28)';
+        ctx.fillRect(x + unit, y + unit + 1, w, h);
+    }
+    ctx.fillStyle = border;
+    ctx.fillRect(x + unit, y + dy, w - unit * 2, unit);
+    ctx.fillRect(x + unit, y + h - unit + dy, w - unit * 2, unit);
+    ctx.fillRect(x, y + unit + dy, unit, h - unit * 2);
+    ctx.fillRect(x + w - unit, y + unit + dy, unit, h - unit * 2);
+    ctx.fillRect(x + unit, y + unit + dy, unit, unit);
+    ctx.fillRect(x + w - unit * 2, y + unit + dy, unit, unit);
+    ctx.fillRect(x + unit, y + h - unit * 2 + dy, unit, unit);
+    ctx.fillRect(x + w - unit * 2, y + h - unit * 2 + dy, unit, unit);
+    ctx.fillStyle = fill;
+    ctx.fillRect(x + unit, y + unit + dy, w - unit * 2, h - unit * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.36)';
+    ctx.fillRect(x + unit * 2, y + unit + dy, Math.max(0, w - unit * 4), unit);
+    ctx.fillRect(x + unit * 2, y + unit * 2 + dy, unit * 2, unit);
+    ctx.fillStyle = 'rgba(92,55,31,0.18)';
+    ctx.fillRect(x + unit * 2, y + h - unit * 2 + dy, Math.max(0, w - unit * 4), unit);
+    ctx.fillRect(x + w - unit * 4, y + h - unit * 3 + dy, unit * 2, unit);
+}
+
+function drawPixelIconButton(ctx, id, x, y, w, h, icon, label, action, active = false) {
+    const hover = action && isPointInRect(uiState.mouseX, uiState.mouseY, x, y, w, h);
+    const fill = active ? FARM_UI.goldLight : hover ? '#ffe7a5' : '#fff2c4';
+    drawFarmButtonSurface(ctx, x, y, w, h, fill, active ? FARM_UI.woodDark : FARM_UI.greenDark, false);
+    drawPixelIcon(ctx, icon, x + 18, y + Math.max(5, Math.floor((h - 32) / 2)), 2);
+    ctx.fillStyle = FARM_UI.ink;
+    ctx.font = 'bold 17px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(label, x + 58, y + h / 2 + 6);
+    registerButton(id, x, y, w, h, action);
+}
+
+function drawIconSmallButton(ctx, id, x, y, w, h, icon, action, color = FARM_UI.gold) {
+    const disabled = !action || color === UI_THEME.buttonDisabled || color === FARM_UI.disabled || color === '#95a5a6';
+    const hover = !disabled && isPointInRect(uiState.mouseX, uiState.mouseY, x, y, w, h);
+    drawFarmButtonSurface(ctx, x, y, w, h, disabled ? FARM_UI.disabled : hover ? '#ffd96d' : color, FARM_UI.woodDark, false);
+    drawPixelIcon(ctx, icon, x + Math.floor((w - 24) / 2), y + Math.floor((h - 24) / 2), 1.5);
+    registerButton(id, x, y, w, h, disabled ? null : action);
+}
+
+function drawSmallButton(ctx, id, x, y, w, h, label, action, color = FARM_UI.gold) {
+    if (isClippedContentControl(id, y, h)) return;
+    const disabled = !action || color === '#95a5a6' || color === UI_THEME.buttonDisabled || color === FARM_UI.disabled;
+    const hover = !disabled && isPointInRect(uiState.mouseX, uiState.mouseY, x, y, w, h);
+    const fill = disabled ? FARM_UI.disabled : hover ? FARM_UI.goldLight : normalizeFarmButtonColor(color);
+    drawFarmButtonSurface(ctx, x, y, w, h, fill, disabled ? '#776751' : FARM_UI.woodDark, false);
+    ctx.fillStyle = disabled ? '#715d49' : FARM_UI.ink;
+    ctx.font = 'bold 13px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x + w / 2, y + h / 2 + 5);
+    registerButton(id, x, y, w, h, disabled ? null : action);
+}
+
+function drawButtonLikeBottomNav(ctx, id, x, y, w, h, label, action, color = FARM_UI.gold) {
+    drawSmallButton(ctx, id, x, y, w, h, label, action, color);
+}
+
+function drawMultiLineButton(ctx, id, x, y, w, h, label, action, color = FARM_UI.gold) {
+    const disabled = !action || color === '#95a5a6' || color === UI_THEME.buttonDisabled || color === FARM_UI.disabled;
+    const hover = !disabled && isPointInRect(uiState.mouseX, uiState.mouseY, x, y, w, h);
+    const fill = disabled ? FARM_UI.disabled : hover ? FARM_UI.goldLight : normalizeFarmButtonColor(color);
+    drawFarmButtonSurface(ctx, x, y, w, h, fill, FARM_UI.woodDark, false);
+    ctx.fillStyle = disabled ? '#715d49' : FARM_UI.ink;
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    label.split('\n').forEach((line, index) => ctx.fillText(line, x + w / 2, y + 21 + index * 19));
+    registerButton(id, x, y, w, h, disabled ? null : action);
+}
+
+function normalizeFarmButtonColor(color) {
+    const map = {
+        [UI_THEME.button]: FARM_UI.green,
+        [UI_THEME.blue]: FARM_UI.blue,
+        [UI_THEME.purple]: '#a471b5',
+        [UI_THEME.danger]: FARM_UI.red,
+        [UI_THEME.warn]: FARM_UI.gold,
+        '#27ae60': FARM_UI.green,
+        '#2980b9': FARM_UI.blue,
+        '#8e44ad': '#a471b5',
+        '#e74c3c': FARM_UI.red,
+        '#f39c12': FARM_UI.gold,
+        '#7f8c8d': '#9c8b72',
+        '#607d6f': FARM_UI.green
+    };
+    return map[color] || color || FARM_UI.gold;
+}
+
+// Final UI pass: keep the copied 8bitcn DOM navigation as the only bottom nav,
+// and reserve Canvas for in-game panels. This avoids duplicate nav bars.
+function drawCanvasUI(ctx) {
+    uiState.buttons = [];
+    drawStatusHUD(ctx);
+    drawTileTip(ctx);
+    if (uiState.activePanel) drawUIPanel(ctx, uiState.activePanel);
+    drawSkillDock(ctx);
+    drawZoomDock(ctx);
+    if (!uiState.activePanel && !uiState.settingsOpen) drawOrderDock(ctx);
+    if (uiState.settingsOpen) drawSettingsPanel(ctx);
+    if (!uiState.activePanel && !uiState.settingsOpen && !uiState.activeStoryPopup) drawTutorialGuide(ctx);
+    drawStoryPopup(ctx);
+}
+
+function drawStatusHUD(ctx) {
+    draw8BitFrame(ctx, 14, 10, canvas.width - 28, 46, '#ffefb8', FARM_UI.woodDark, false);
+    drawPixelIcon(ctx, 'coin', 30, 17, 1.45);
+    drawPixelIcon(ctx, 'clock', 394, 17, 1.35);
+    ctx.fillStyle = FARM_UI.ink;
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${coins}`, 60, 39);
+    ctx.fillText(`Lv.${playerLevel}`, 146, 39);
+    ctx.fillText(`EXP ${playerExp}/${getMaxExp()}`, 226, 39);
+    ctx.fillText(`${getClockLabel()}`, 424, 39);
+    ctx.fillText(`${WEATHER_CONFIG[weather.type].icon} ${WEATHER_CONFIG[weather.type].name}`, 570, 39);
+    ctx.fillText(`生长 ${Math.round(getGrowthMultiplier() * 100)}%`, 718, 39);
+    ctx.fillText(`工具 ${getToolLabel(currentSelectedTool)}`, 868, 39);
+    ctx.fillText(`视野 ${Math.round((camera.zoom || 1) * 100)}%`, canvas.width - 390, 39);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = FARM_UI.text;
+    ctx.fillText('双指缩放 · 长按看地块', canvas.width - 92, 39);
+    drawIconSmallButton(ctx, 'settings-toggle', canvas.width - 58, 16, 32, 28, 'gear', () => toggleSettings(), FARM_UI.gold);
+}
+
+function drawSkillDock(ctx) {
+    const dockW = 124;
+    const x = 18;
+    const y = 76;
+    draw8BitFrame(ctx, x - 8, y - 8, dockW + 16, 188, '#efe0a7', FARM_UI.greenDark, true);
+    const ids = ['sow', 'rain', 'harvest'];
+    const labels = { sow: '播种', rain: '求雨', harvest: '收割' };
+    ids.forEach((id, index) => {
+        const skill = skills[id];
+        const by = y + index * 58;
+        const timeLeft = Math.max(0, Math.ceil((getSkillCd(id) - (Date.now() - skill.lastUsed)) / 1000));
+        const ready = timeLeft <= 0;
+        const label = ready ? `${skill.name}\n${labels[id]}` : `${skill.name}\n${timeLeft}s`;
+        drawMultiLineButton(ctx, `dock-skill-${id}`, x, by, dockW, 48, label, () => useSkill(id), ready ? '#a471b5' : FARM_UI.disabled);
+    });
+}
+
+function drawZoomDock(ctx) {
+    const x = 18;
+    const y = 292;
+    const w = 140;
+    draw8BitFrame(ctx, x - 8, y - 8, w + 16, 134, '#efe0a7', FARM_UI.greenDark, true);
+    ctx.fillStyle = FARM_UI.ink;
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('视野缩放', x + w / 2, y + 18);
+    drawSmallButton(ctx, 'zoom-in', x, y + 34, 60, 34, '+', () => zoomCamera(1.18), FARM_UI.blue);
+    drawSmallButton(ctx, 'zoom-out', x + 80, y + 34, 60, 34, '-', () => zoomCamera(1 / 1.18), FARM_UI.blue);
+    drawSmallButton(ctx, 'zoom-reset', x, y + 82, w, 32, `${Math.round((camera.zoom || 1) * 100)}%`, () => resetCameraZoom(), '#9c8b72');
+}
+
+function drawUIPanel(ctx, panelId) {
+    const titles = { journal: '手札', seeds: '种子', build: '建造', orders: '订单', market: '市场' };
+    const icons = { journal: 'book', seeds: 'package', build: 'hammer', orders: 'order', market: 'market' };
+    draw8BitFrame(ctx, UI_PANEL.x, UI_PANEL.y, UI_PANEL.w, UI_PANEL.h, FARM_UI.paper, FARM_UI.woodDark, true);
+    draw8BitHeader(ctx, UI_PANEL.x, UI_PANEL.y, UI_PANEL.w, 48, FARM_UI.wood, FARM_UI.woodDark);
+    drawPixelIcon(ctx, icons[panelId] || 'book', UI_PANEL.x + 18, UI_PANEL.y + 8, 1.8);
+    ctx.fillStyle = '#fff5ce';
+    ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(titles[panelId] || '', UI_PANEL.x + 56, UI_PANEL.y + 30);
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#ffe7a5';
+    ctx.fillText('内容较多时可滚动', UI_PANEL.x + UI_PANEL.w - 58, UI_PANEL.y + 29);
+    drawIconSmallButton(ctx, 'close-panel', UI_PANEL.x + UI_PANEL.w - 42, UI_PANEL.y + 9, 28, 26, 'close', () => closePanel(), FARM_UI.red);
+    drawPanelTabs(ctx, panelId);
+
+    const contentY = panelId === 'journal' ? UI_PANEL.y + 146 : UI_CONTENT.y;
+    const contentH = UI_PANEL.y + UI_PANEL.h - contentY - 24;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(UI_CONTENT.x, contentY, UI_CONTENT.w, contentH);
+    ctx.clip();
+    ctx.translate(0, contentY - UI_CONTENT.y);
+    if (panelId === 'journal') drawJournalPanel(ctx);
+    if (panelId === 'seeds') drawSeedsPanel(ctx);
+    if (panelId === 'build') drawBuildPanel(ctx);
+    if (panelId === 'orders') drawOrdersPanel(ctx);
+    if (panelId === 'market') drawMarketPanel(ctx);
+    ctx.restore();
+    drawScrollHint(ctx, panelId);
+}
+
+function drawBottomNav(ctx) {
+    // Bottom navigation is now the copied 8bitcn DOM shell in bitcn-dom-ui.js.
+}
+
+function drawTabs(ctx, panelId, tabs, x, y) {
+    let cursorX = x;
+    tabs.forEach(([id, label]) => {
+        const active = uiState.activeTabs[panelId] === id;
+        const width = Math.max(88, label.length * 18 + 34);
+        drawFarmButtonSurface(ctx, cursorX, y, width, 32, active ? FARM_UI.goldLight : '#f6e5ae', active ? FARM_UI.woodDark : '#9d8150', false);
+        ctx.fillStyle = FARM_UI.ink;
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, cursorX + width / 2, y + 21);
+        registerButton(`tab-${panelId}-${id}`, cursorX, y, width, 32, () => {
+            uiState.activeTabs[panelId] = id;
+            if (panelId === 'codex') uiState.scroll.journal = 0;
+            else uiState.scroll[panelId] = 0;
+        });
+        cursorX += width + 12;
+    });
+}
+
+function drawPanelTabs(ctx, panelId) {
+    if (panelId === 'journal') {
+        drawTabs(ctx, 'journal', [
+            ['codex', '图鉴'],
+            ['letters', '爷爷的信'],
+            ['talents', '天赋'],
+            ['miracle', '奇迹'],
+            ['visitors', '访客'],
+            ['endings', '结局']
+        ], UI_PANEL.x + 18, UI_PANEL.y + 60);
+    }
+    if (panelId === 'build') {
+        drawTabs(ctx, 'build', [
+            ['ranch', '养殖'],
+            ['processing', '加工'],
+            ['miracle', '奇迹']
+        ], UI_PANEL.x + 18, UI_PANEL.y + 60);
+    }
+    if (panelId === 'journal' && uiState.activeTabs.journal === 'codex') {
+        drawTabs(ctx, 'codex', [
+            ['crops', '作物'],
+            ['animals', '动物'],
+            ['products', '奇物']
+        ], UI_PANEL.x + 18, UI_PANEL.y + 102);
+    }
+}
+
+function drawCodexPanel(ctx, x, y) {
+    const total = getCodexTotalCount();
+    const collected = getCollectedUniqueCount();
+    const percent = Math.round((collected / total) * 100);
+    draw8BitFrame(ctx, x, y - 8, UI_CONTENT.w, 72, '#fff3bd', '#c08a48', false);
+    drawPixelIcon(ctx, 'book', x + 18, y + 10, 1.7);
+    drawTextLine(ctx, `图鉴称号：${getCodexTitle(collected)}`, x + 58, y + 20, FARM_UI.ink, 'bold 17px Arial');
+    drawTextLine(ctx, `收集率 ${collected}/${total} (${percent}%)`, x + 58, y + 46, FARM_UI.text, '13px Arial');
+    draw8BitFrame(ctx, x + 310, y + 28, UI_CONTENT.w - 350, 16, '#e4dcc5', '#bda16a', false);
+    ctx.fillStyle = FARM_UI.green;
+    ctx.fillRect(x + 316, y + 34, Math.max(0, (UI_CONTENT.w - 362) * (collected / total)), 4);
+    y += 86;
+    y = drawCodexRewards(ctx, x, y);
+    y = drawCodexSetRewards(ctx, x, y);
+    const group = CODEX_GROUPS[uiState.activeTabs.codex] || CODEX_GROUPS.crops;
+    drawCodexGroup(ctx, group, x, y + 8);
+}
+
+function drawCodexRewards(ctx, x, y) {
+    drawTextLine(ctx, '里程碑奖励', x, y, FARM_UI.ink, 'bold 15px Arial');
+    y += 22;
+    const gap = 14;
+    const cardW = Math.floor((UI_CONTENT.w - gap * 3) / 4);
+    CODEX_REWARDS.forEach((reward, index) => {
+        const rx = x + index * (cardW + gap);
+        const ready = getCodexPercent() >= reward.percent;
+        const claimed = collection.claimedRewards[reward.id];
+        draw8BitFrame(ctx, rx, y, cardW, 64, claimed ? '#eadfbd' : ready ? '#fff0b6' : '#fff7d2', ready ? FARM_UI.gold : '#bda16a', false);
+        drawTextLine(ctx, reward.label, rx + 14, y + 24, FARM_UI.ink, 'bold 13px Arial');
+        drawTextLine(ctx, `${reward.percent}%  ${reward.coins}币 + ${reward.exp}EXP`, rx + 14, y + 46, FARM_UI.text, '12px Arial');
+        drawSmallButton(ctx, `codex-reward-${reward.id}`, rx + cardW - 70, y + 18, 54, 28, claimed ? '已领' : '领取', () => claimCodexReward(reward.id), ready && !claimed ? FARM_UI.green : FARM_UI.disabled);
+    });
+    return y + 82;
+}
+
+function drawCodexSetRewards(ctx, x, y) {
+    drawTextLine(ctx, '类别收集奖励', x, y, FARM_UI.ink, 'bold 15px Arial');
+    y += 24;
+    const cols = 3;
+    const gap = 16;
+    const cardW = Math.floor((UI_CONTENT.w - gap * (cols - 1)) / cols);
+    const cardH = 74;
+    CODEX_SET_REWARDS.forEach((reward, index) => {
+        const ids = getCropCategoryIds(reward.category);
+        const got = getCollectedCategoryCount(reward.category);
+        const ready = isCodexSetRewardReady(reward);
+        const claimed = collection.claimedSetRewards?.[reward.id];
+        const col = index % cols;
+        const row = Math.floor(index / cols);
+        const rx = x + col * (cardW + gap);
+        const ry = y + row * (cardH + gap);
+        draw8BitFrame(ctx, rx, ry, cardW, cardH, claimed ? '#eadfbd' : ready ? '#fff0b6' : '#fff7d2', ready ? FARM_UI.gold : '#bda16a', false);
+        drawTextLine(ctx, reward.label, rx + 16, ry + 26, FARM_UI.ink, 'bold 13px Arial');
+        drawTextLine(ctx, `${got}/${ids.length}  ${reward.bonusLabel}`, rx + 16, ry + 50, FARM_UI.text, '12px Arial');
+        drawSmallButton(ctx, `codex-set-${reward.id}`, rx + cardW - 72, ry + 22, 54, 28, claimed ? '已领' : '领取', () => claimCodexSetReward(reward.id), ready && !claimed ? FARM_UI.green : FARM_UI.disabled);
+    });
+    return y + Math.ceil(CODEX_SET_REWARDS.length / cols) * (cardH + gap) + 18;
+}
+
+function drawCodexGroup(ctx, group, x, y) {
+    const items = getCodexDisplayItems(group);
+    const got = group.items.filter(isCollected).length;
+    drawTextLine(ctx, `${group.name} ${got}/${group.items.length}`, x, y, FARM_UI.ink, 'bold 15px Arial');
+    y += 24;
+    const cols = Math.max(3, Math.min(4, Math.floor(UI_CONTENT.w / 220)));
+    const gap = 16;
+    const cardW = Math.floor((UI_CONTENT.w - gap * (cols - 1)) / cols);
+    const cardH = 124;
+    items.forEach((itemId, index) => {
+        const col = index % cols;
+        const row = Math.floor(index / cols);
+        drawCodexItemCard(ctx, itemId, x + col * (cardW + gap), y + row * (cardH + gap), cardW, cardH);
+    });
+}
+
+function drawCodexItemCard(ctx, itemId, x, y, w, h) {
+    const config = CROP_CONFIG[itemId];
+    const amount = getCollectedAmount(itemId);
+    const found = amount > 0;
+    const unlocked = isItemUnlocked(itemId);
+    draw8BitFrame(ctx, x, y, w, h, found ? '#fff7d2' : '#d7ddd2', found ? '#9d8150' : '#9da895', false);
+    if (found) {
+        ctx.fillStyle = FARM_UI.ink;
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(config.icon, x + 16, y + 34);
+    } else {
+        drawCodexSilhouette(ctx, x + 34, y + 30, unlocked);
+        if (!unlocked) drawPixelIcon(ctx, 'lock', x + w - 42, y + 18, 1.25);
+    }
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = found ? FARM_UI.ink : '#667060';
+    ctx.fillText(found ? config.name : `${getCodexKindName(itemId)}剪影`, x + 58, y + 28);
+    ctx.font = '12px Arial';
+    const detail = found ? getCodexFoundDetail(itemId, amount) : getCodexHint(itemId);
+    drawWrappedText(ctx, detail, x + 16, y + 56, w - 28, 15, found ? FARM_UI.text : '#667060', '12px Arial');
+    if (VARIANT_CONFIG[itemId]) {
+        const variants = getVariantProgress(itemId);
+        const line = found ? `变种 ${variants.found}/${variants.total}` : '变种：未发现';
+        drawTextLine(ctx, line, x + 16, y + h - 12, found && variants.found > 0 ? '#8e44ad' : FARM_UI.muted, '11px Arial');
+    }
+}
+
+function drawOrderDock(ctx) {
+    const x = UI_ORDER_DOCK.x;
+    const y = UI_ORDER_DOCK.y;
+    draw8BitFrame(ctx, x, y, UI_ORDER_DOCK.w, UI_ORDER_DOCK.h, FARM_UI.paper, FARM_UI.woodDark, true);
+    draw8BitHeader(ctx, x, y, UI_ORDER_DOCK.w, 42, FARM_UI.wood, FARM_UI.woodDark);
+    drawPixelIcon(ctx, 'order', x + 14, y + 8, 1.5);
+    ctx.fillStyle = '#fff5ce';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('订单看板', x + 46, y + 27);
+    drawSmallButton(ctx, 'order-dock-more', x + UI_ORDER_DOCK.w - 74, y + 8, 56, 26, '详情', () => togglePanel('orders'), FARM_UI.gold);
+
+    const contentX = x + 12;
+    const contentY = y + 54;
+    const contentW = UI_ORDER_DOCK.w - 24;
+    const contentH = UI_ORDER_DOCK.h - 66;
+    uiState.orderDockScroll = Math.min(uiState.orderDockScroll, getOrderDockMaxScroll());
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(contentX, contentY, contentW, contentH);
+    ctx.clip();
+    tasks.forEach((task, index) => {
+        const config = CROP_CONFIG[task.item];
+        if (!config) return;
+        const enough = inventory[task.item] >= task.amount;
+        const cardY = contentY + 6 + index * 72 - uiState.orderDockScroll;
+        if (cardY + 60 < contentY || cardY > contentY + contentH) return;
+        draw8BitFrame(ctx, contentX, cardY, contentW, 60, enough ? '#fff0b6' : '#fff7d2', enough ? FARM_UI.green : '#bda16a', false);
+        ctx.fillStyle = FARM_UI.ink;
+        ctx.font = 'bold 13px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${config.icon} ${config.name} x${task.amount}`, contentX + 14, cardY + 24);
+        ctx.fillStyle = enough ? FARM_UI.greenDark : FARM_UI.text;
+        ctx.font = '12px Arial';
+        ctx.fillText(`${inventory[task.item]}/${task.amount}  奖励 ${task.reward}币`, contentX + 14, cardY + 45);
+        drawSmallButton(ctx, `order-dock-${index}`, contentX + contentW - 76, cardY + 16, 62, 28, enough ? '交付' : '等待', () => deliverTask(index), enough ? FARM_UI.green : FARM_UI.disabled);
+    });
+    ctx.restore();
+    drawOrderDockScrollbar(ctx, x + UI_ORDER_DOCK.w - 12, contentY, contentH);
+}
+
+function drawOrdersPanel(ctx) {
+    const x = UI_CONTENT.x;
+    let y = UI_CONTENT.y + UI_CONTENT_PAD_TOP - uiState.scroll.orders;
+    drawTextLine(ctx, '普通订单看板', x, y, FARM_UI.ink, 'bold 16px Arial');
+    y += 30;
+    tasks.forEach((task, index) => {
+        const config = CROP_CONFIG[task.item];
+        if (!config) return;
+        const enough = inventory[task.item] >= task.amount;
+        const cardW = UI_CONTENT.w - 160;
+        drawInfoCard(ctx, x, y, cardW, 78, `${config.icon} ${config.name} x${task.amount}`, `进度 ${inventory[task.item]}/${task.amount}  奖励 ${task.reward}币 + ${task.exp}EXP`, enough ? FARM_UI.green : FARM_UI.gold);
+        drawSmallButton(ctx, `order-${index}`, x + cardW + 28, y + 22, 100, 32, enough ? '交付' : '未达标', () => deliverTask(index), enough ? FARM_UI.green : FARM_UI.disabled);
+        y += 92;
+    });
+    y += 12;
+    drawTextLine(ctx, '访客委托', x, y, FARM_UI.ink, 'bold 16px Arial');
+    y += 30;
+    const visitorTasks = getVisitorIds().filter(id => isVisitorUnlocked(id) && !getVisitorProgress(id).finished);
+    if (visitorTasks.length === 0) {
+        drawTextLine(ctx, '暂无可交付访客委托，继续提升农场进度。', x, y, FARM_UI.text, '14px Arial');
+        return;
+    }
+    visitorTasks.forEach(id => {
+        const config = VISITOR_CONFIG[id];
+        const progress = getVisitorProgress(id);
+        const ready = canDeliverVisitorTask(id);
+        const cardW = UI_CONTENT.w - 160;
+        drawInfoCard(ctx, x, y, cardW, 78, `${config.icon} ${config.name}：${progress.task.title}`, `${formatVisitorNeed(progress.task.need)}  奖励 ${formatRewardText(progress.task.reward)}`, ready ? FARM_UI.green : FARM_UI.gold);
+        drawSmallButton(ctx, `order-visitor-${id}`, x + cardW + 28, y + 22, 100, 32, ready ? '交付' : '未达标', () => deliverVisitorTask(id), ready ? FARM_UI.green : FARM_UI.disabled);
+        y += 92;
+    });
+}
+
+function drawMarketPanel(ctx) {
+    const ids = getMarketItemIds().filter(isMarketItemUnlocked);
+    const x = UI_CONTENT.x;
+    let y = UI_CONTENT.y + UI_CONTENT_PAD_TOP - uiState.scroll.market;
+    drawTextLine(ctx, '像素交易所：价格每 10 秒波动一次。', x, y, FARM_UI.text, '14px Arial');
+    y += 32;
+    if (ids.length === 0) {
+        drawTextLine(ctx, '市场会在首次收获或获得产物后逐步上架。', x, y, FARM_UI.text, '15px Arial');
+        return;
+    }
+    ids.forEach(id => {
+        if (uiState.marketAmounts[id] === undefined) uiState.marketAmounts[id] = 1;
+        const config = CROP_CONFIG[id];
+        const amount = Math.min(Math.max(1, uiState.marketAmounts[id]), Math.max(1, inventory[id] || 0));
+        uiState.marketAmounts[id] = amount;
+        const market = marketState[id] || { price: config.basePrice, trend: 0 };
+        const price = Math.max(1, Math.floor((market.price || config.basePrice || 1) * getCategoryPriceMultiplier(id)));
+        const trend = market.trend > 0.2 ? '↑' : market.trend < -0.2 ? '↓' : '-';
+        const cardW = UI_CONTENT.w - 338;
+        drawInfoCard(ctx, x, y, cardW, 66, `${config.icon} ${config.name}  库存 ${inventory[id]}`, `当前价 ${price}币 ${trend}  本次 ${amount} 个 = ${amount * price}币`, FARM_UI.blue);
+        drawSmallButton(ctx, `market-minus-${id}`, x + cardW + 24, y + 16, 36, 30, '-', () => { if (uiState.activeMarketInput === id) commitMarketInput(); changeMarketAmount(id, -1); }, '#9c8b72');
+        drawMarketAmountInput(ctx, id, x + cardW + 66, y + 16, 74, 30, amount);
+        drawSmallButton(ctx, `market-plus-${id}`, x + cardW + 148, y + 16, 36, 30, '+', () => { if (uiState.activeMarketInput === id) commitMarketInput(); changeMarketAmount(id, 1); }, '#9c8b72');
+        drawSmallButton(ctx, `market-max-${id}`, x + cardW + 192, y + 16, 50, 30, '全选', () => setMarketAmount(id, inventory[id]), '#9c8b72');
+        drawSmallButton(ctx, `market-sell-${id}`, x + cardW + 250, y + 16, 76, 30, '卖出', () => { if (uiState.activeMarketInput === id) commitMarketInput(); sellItemAmount(id, uiState.marketAmounts[id]); }, inventory[id] > 0 ? FARM_UI.gold : FARM_UI.disabled);
+        y += 76;
+    });
+}
+
+function drawMarketAmountInput(ctx, id, x, y, w, h, amount) {
+    const active = uiState.activeMarketInput === id;
+    const hover = isPointInRect(uiState.mouseX, uiState.mouseY, x, y, w, h);
+    drawFarmButtonSurface(ctx, x, y, w, h, active ? '#fff0b6' : hover ? '#fff7d2' : '#fffdf0', active ? FARM_UI.red : '#bda16a', false);
+    ctx.fillStyle = FARM_UI.ink;
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(active ? (uiState.marketDraft || '|') : String(amount), x + w / 2, y + 20);
+    registerButton(`market-input-${id}`, x, y, w, h, () => beginMarketInput(id));
+}
+
+function drawEndingsPanel(ctx, x, y) {
+    checkEndingUnlocks(true);
+    const unlockedCount = Object.keys(endingState.unlocked || {}).length;
+    drawTextLine(ctx, `结局收藏：${unlockedCount}/${Object.keys(ENDING_CONFIG).length}`, x, y, FARM_UI.ink, 'bold 16px Arial');
+    y += 32;
+    Object.entries(ENDING_CONFIG).forEach(([id, ending]) => {
+        const unlocked = !!endingState.unlocked[id];
+        const unread = unlocked && !endingState.read[id];
+        draw8BitFrame(ctx, x, y, UI_CONTENT.w - 16, 108, unlocked ? '#fff7d2' : '#d7ddd2', unread ? FARM_UI.gold : '#bda16a', false);
+        if (unlocked) drawPixelIcon(ctx, 'trophy', x + 22, y + 24, 2);
+        else drawPixelIcon(ctx, 'lock', x + 24, y + 24, 2);
+        ctx.textAlign = 'left';
+        ctx.fillStyle = unlocked ? FARM_UI.ink : '#667060';
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText(unlocked ? `${ending.title}${unread ? ' •' : ''}` : '未解锁结局', x + 76, y + 30);
+        ctx.font = '13px Arial';
+        if (unlocked) {
+            ending.text.forEach((line, index) => ctx.fillText(line, x + 76, y + 56 + index * 22));
+        } else {
+            ctx.fillText('继续推进奇迹、访客、图鉴与加工系统。', x + 76, y + 60);
+        }
+        registerButton(`ending-read-${id}`, x, y, UI_CONTENT.w - 16, 108, () => markEndingRead(id));
+        y += 124;
+    });
+}
+
+function drawInfoCard(ctx, x, y, w, h, title, body, accent) {
+    draw8BitFrame(ctx, x, y, w, h, '#fff3bd', '#c08a48', false);
+    ctx.fillStyle = normalizeFarmButtonColor(accent || FARM_UI.green);
+    ctx.fillRect(x + 8, y + 10, 6, h - 20);
+    drawTextLine(ctx, title, x + 20, y + 27, FARM_UI.ink, 'bold 15px Arial');
+    drawTextLine(ctx, body, x + 20, y + 52, FARM_UI.text, '13px Arial');
+}
+
+function drawStatusHUD(ctx) {
+    draw8BitFrame(ctx, 14, 10, canvas.width - 28, 46, 'rgba(255, 239, 184, 0.96)', FARM_UI.woodDark, false);
+    drawPixelIcon(ctx, 'coin', 30, 17, 1.45);
+    drawPixelIcon(ctx, 'clock', 394, 17, 1.35);
+    ctx.fillStyle = FARM_UI.ink;
+    ctx.font = 'bold 17px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${coins}`, 60, 39);
+    ctx.fillText(`Lv.${playerLevel}`, 146, 39);
+    ctx.fillText(`EXP ${playerExp}/${getMaxExp()}`, 226, 39);
+    ctx.fillText(`${getClockLabel()}`, 424, 39);
+    ctx.fillText(`${WEATHER_CONFIG[weather.type].icon} ${WEATHER_CONFIG[weather.type].name}`, 570, 39);
+    ctx.fillText(`生长 ${Math.round(getGrowthMultiplier() * 100)}%`, 718, 39);
+    ctx.fillText(`工具 ${getToolLabel(currentSelectedTool)}`, 868, 39);
+    ctx.fillText(`视野 ${Math.round((camera.zoom || 1) * 100)}%`, canvas.width - 360, 39);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = FARM_UI.text;
+    ctx.fillText('双指缩放 · 长按看地块', canvas.width - 72, 39);
+    drawIconSmallButton(ctx, 'settings-toggle', canvas.width - 54, 16, 32, 28, 'gear', () => toggleSettings(), FARM_UI.gold);
+}
+
+function drawBottomNav(ctx) {
+    if (typeof window.refreshBitcnDomUi === 'function') return;
+}
+
+function drawUIPanel(ctx, panelId) {
+    const titles = { journal: '手札', seeds: '种子', build: '建造', orders: '订单', market: '市场' };
+    const icons = { journal: 'book', seeds: 'package', build: 'hammer', orders: 'order', market: 'market' };
+    draw8BitFrame(ctx, UI_PANEL.x, UI_PANEL.y, UI_PANEL.w, UI_PANEL.h, FARM_UI.paper, FARM_UI.woodDark, true);
+    draw8BitHeader(ctx, UI_PANEL.x, UI_PANEL.y, UI_PANEL.w, 48, FARM_UI.wood, FARM_UI.woodDark);
+    drawPixelIcon(ctx, icons[panelId] || 'book', UI_PANEL.x + 18, UI_PANEL.y + 8, 1.8);
+    ctx.fillStyle = '#fff5ce';
+    ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(titles[panelId] || '', UI_PANEL.x + 56, UI_PANEL.y + 30);
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#ffe7a5';
+    ctx.fillText('内容较多时可滚动', UI_PANEL.x + UI_PANEL.w - 58, UI_PANEL.y + 29);
+    drawIconSmallButton(ctx, 'close-panel', UI_PANEL.x + UI_PANEL.w - 42, UI_PANEL.y + 9, 28, 26, 'close', () => closePanel(), FARM_UI.red);
+    drawPanelTabs(ctx, panelId);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(UI_CONTENT.x, UI_CONTENT.y, UI_CONTENT.w, UI_CONTENT.h);
+    ctx.clip();
+    if (panelId === 'journal') drawJournalPanel(ctx);
+    if (panelId === 'seeds') drawSeedsPanel(ctx);
+    if (panelId === 'build') drawBuildPanel(ctx);
+    if (panelId === 'orders') drawOrdersPanel(ctx);
+    if (panelId === 'market') drawMarketPanel(ctx);
+    ctx.restore();
+    drawScrollHint(ctx, panelId);
+}
+
+function drawGridItems(ctx, ids, x, y, type) {
+    const cardW = 178;
+    const cardH = 72;
+    ids.forEach((id, index) => {
+        const config = CROP_CONFIG[id];
+        const col = index % 4;
+        const row = Math.floor(index / 4);
+        const px = x + col * (cardW + 14);
+        const py = y + row * (cardH + 14);
+        const unlocked = isItemUnlocked(id);
+        const selected = currentSelectedTool === id;
+        draw8BitFrame(ctx, px, py, cardW, cardH, selected ? '#fff0b6' : unlocked ? UI_THEME.card : '#e1e5d8', selected ? UI_THEME.warn : unlocked ? UI_THEME.borderSoft : '#a8b1a2', false);
+        ctx.fillStyle = unlocked ? UI_THEME.ink : UI_THEME.muted;
+        ctx.font = 'bold 18px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(unlocked ? `${config.icon} ${config.name}` : '？？？', px + 14, py + 29);
+        ctx.font = '12px Arial';
+        const detail = type === 'crop'
+            ? (unlocked ? `${config.seedPrice}币 / Lv.${config.reqLevel}` : (config.unlockHint || `Lv.${config.reqLevel} 解锁`))
+            : (unlocked ? `${config.price}币 / Lv.${config.reqLevel}` : (config.unlockHint || `Lv.${config.reqLevel} 解锁`));
+        ctx.fillText(detail, px + 14, py + 55);
+        if (!unlocked) drawPixelIcon(ctx, 'lock', px + cardW - 34, py + 18, 1.2);
+        registerButton(`select-${id}`, px, py, cardW, cardH, () => {
+            if (!unlocked) return;
+            selectTool(id);
+            closePanel();
+        });
+    });
+}
+
+function draw8BitFrame(ctx, x, y, w, h, fill, border, shadow = true) {
+    if (shadow) {
+        ctx.fillStyle = 'rgba(33, 30, 24, 0.30)';
+        ctx.fillRect(x + 5, y + 6, w, h);
+    }
+    ctx.fillStyle = border;
+    ctx.fillRect(x + 8, y, w - 16, 6);
+    ctx.fillRect(x + 8, y + h - 6, w - 16, 6);
+    ctx.fillRect(x, y + 8, 6, h - 16);
+    ctx.fillRect(x + w - 6, y + 8, 6, h - 16);
+    ctx.fillRect(x + 6, y + 6, 6, 6);
+    ctx.fillRect(x + w - 12, y + 6, 6, 6);
+    ctx.fillRect(x + 6, y + h - 12, 6, 6);
+    ctx.fillRect(x + w - 12, y + h - 12, 6, 6);
+    ctx.fillStyle = fill;
+    ctx.fillRect(x + 6, y + 6, w - 12, h - 12);
+}
+
+function draw8BitHeader(ctx, x, y, w, h, fill, border) {
+    ctx.fillStyle = border;
+    ctx.fillRect(x + 8, y, w - 16, h);
+    ctx.fillRect(x, y + 8, w, h - 8);
+    ctx.fillStyle = fill;
+    ctx.fillRect(x + 8, y + 6, w - 16, h - 10);
+    ctx.fillRect(x + 6, y + 12, w - 12, h - 16);
+}
+
+function drawStatusHUD(ctx) {
+    drawRoundRect(ctx, 14, 10, canvas.width - 28, 46, 8, UI_THEME.panel, UI_THEME.border);
+    drawPixelIcon(ctx, 'coin', 30, 17, 1.4);
+    ctx.fillStyle = UI_THEME.ink;
+    ctx.font = 'bold 17px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${coins}`, 58, 39);
+    ctx.fillText(`Lv.${playerLevel}`, 142, 39);
+    ctx.fillText(`EXP ${playerExp}/${getMaxExp()}`, 222, 39);
+    ctx.fillText(`时间 ${getClockLabel()}`, 422, 39);
+    ctx.fillText(`${WEATHER_CONFIG[weather.type].icon} ${WEATHER_CONFIG[weather.type].name}`, 570, 39);
+    ctx.fillText(`生长 ${Math.round(getGrowthMultiplier() * 100)}%`, 718, 39);
+    ctx.fillText(`工具 ${getToolLabel(currentSelectedTool)}`, 868, 39);
+    ctx.fillText(`视野 ${Math.round((camera.zoom || 1) * 100)}%`, canvas.width - 360, 39);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = UI_THEME.text;
+    ctx.fillText('双指缩放 · 长按看地块', canvas.width - 72, 39);
+    drawIconSmallButton(ctx, 'settings-toggle', canvas.width - 54, 16, 32, 28, 'gear', () => toggleSettings(), UI_THEME.header);
+}
+
+function drawBottomNav(ctx) {
+    const nav = [
+        { id: 'journal', icon: 'book', label: '手札' },
+        { id: 'seeds', icon: 'seed', label: '种子' },
+        { id: 'build', icon: 'hammer', label: '建造' },
+        { id: 'market', icon: 'market', label: '市场' }
+    ];
+    const y = canvas.height - UI_BAR_HEIGHT + 8;
+    const itemW = Math.min(190, Math.max(145, Math.floor((canvas.width - 250) / nav.length)));
+    const gap = 18;
+    const startX = (canvas.width - (itemW * nav.length + gap * (nav.length - 1))) / 2;
+    drawRoundRect(ctx, startX - 18, y - 6, itemW * nav.length + gap * (nav.length - 1) + 36, 58, 10, 'rgba(84, 72, 50, 0.76)', UI_THEME.border);
+    nav.forEach((item, index) => {
+        const x = startX + index * (itemW + gap);
+        drawPixelIconButton(ctx, `nav-${item.id}`, x, y, itemW, 42, item.icon, item.label, () => togglePanel(item.id), uiState.activePanel === item.id);
+    });
+}
+
+function drawUIPanel(ctx, panelId) {
+    const titles = { journal: '手札', seeds: '种子', build: '建造', orders: '订单', market: '市场' };
+    const icons = { journal: 'book', seeds: 'seed', build: 'hammer', orders: 'order', market: 'market' };
+    const title = titles[panelId] || '';
+    drawRoundRect(ctx, UI_PANEL.x + 4, UI_PANEL.y + 6, UI_PANEL.w, UI_PANEL.h, 10, UI_THEME.shadow, null);
+    drawRoundRect(ctx, UI_PANEL.x, UI_PANEL.y, UI_PANEL.w, UI_PANEL.h, 10, UI_THEME.panel, UI_THEME.border);
+    drawRoundRect(ctx, UI_PANEL.x, UI_PANEL.y, UI_PANEL.w, 46, 10, UI_THEME.header, UI_THEME.headerDark);
+    drawPixelIcon(ctx, icons[panelId] || 'book', UI_PANEL.x + 18, UI_PANEL.y + 8, 1.8);
+    ctx.fillStyle = '#fffaf0';
+    ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(title, UI_PANEL.x + 56, UI_PANEL.y + 30);
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#f7ecd1';
+    ctx.fillText('内容较多时可滚动', UI_PANEL.x + UI_PANEL.w - 58, UI_PANEL.y + 29);
+    drawIconSmallButton(ctx, 'close-panel', UI_PANEL.x + UI_PANEL.w - 42, UI_PANEL.y + 9, 28, 26, 'close', () => closePanel(), UI_THEME.danger);
+    drawPanelTabs(ctx, panelId);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(UI_CONTENT.x, UI_CONTENT.y, UI_CONTENT.w, UI_CONTENT.h);
+    ctx.clip();
+    if (panelId === 'journal') drawJournalPanel(ctx);
+    if (panelId === 'seeds') drawSeedsPanel(ctx);
+    if (panelId === 'build') drawBuildPanel(ctx);
+    if (panelId === 'orders') drawOrdersPanel(ctx);
+    if (panelId === 'market') drawMarketPanel(ctx);
+    ctx.restore();
+    drawScrollHint(ctx, panelId);
+}
+
+function drawSettingsPanel(ctx) {
+    const x = UI_SETTINGS.x;
+    const y = UI_SETTINGS.y;
+    drawRoundRect(ctx, x + 4, y + 6, UI_SETTINGS.w, UI_SETTINGS.h, 10, UI_THEME.shadow, null);
+    drawRoundRect(ctx, x, y, UI_SETTINGS.w, UI_SETTINGS.h, 10, UI_THEME.panel, UI_THEME.border);
+    drawRoundRect(ctx, x, y, UI_SETTINGS.w, 42, 10, UI_THEME.header, UI_THEME.headerDark);
+    drawPixelIcon(ctx, 'gear', x + 16, y + 9, 1.6);
+    ctx.fillStyle = '#fffaf0';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('设置', x + 48, y + 27);
+    drawIconSmallButton(ctx, 'close-settings', x + UI_SETTINGS.w - 42, y + 8, 28, 26, 'close', () => toggleSettings(false), UI_THEME.danger);
+    drawTextLine(ctx, `当前时间：${getClockLabel()}`, x + 22, y + 72, UI_THEME.ink, '15px Arial');
+    drawTextLine(ctx, `当前视野：${Math.round((camera.zoom || 1) * 100)}%`, x + 22, y + 98, UI_THEME.ink, '15px Arial');
+    drawSmallButton(ctx, 'setting-save', x + 22, y + 124, 142, 34, '手动保存', () => {
+        saveGame();
+        effectText = '已保存';
+        effectAlpha = 1.0;
+    }, UI_THEME.button);
+    drawSmallButton(ctx, 'setting-reset-zoom', x + 184, y + 124, 142, 34, '重置视野', () => resetCameraZoom(), UI_THEME.blue);
+    drawSmallButton(ctx, 'setting-audio', x + 22, y + 174, 142, 34, audioEnabled ? '音效 开' : '音效 关', () => toggleAudio(), audioEnabled ? UI_THEME.button : UI_THEME.buttonDisabled);
+    drawSmallButton(ctx, 'setting-shake', x + 184, y + 174, 142, 34, uiPreferences?.screenShake === false ? '震动 关' : '震动 开', () => toggleScreenShake(), uiPreferences?.screenShake === false ? UI_THEME.buttonDisabled : UI_THEME.button);
+    drawTextLine(ctx, '关闭后收割、共振、稀有发现都不会晃动画面。', x + 22, y + 226, UI_THEME.muted, '13px Arial');
+    drawSmallButton(ctx, 'setting-reset-game', x + 184, y + 238, 142, 34, '重置世界', () => resetGame(), UI_THEME.danger);
+}
+
+function drawPixelIconButton(ctx, id, x, y, w, h, icon, label, action, active = false) {
+    const hover = action && isPointInRect(uiState.mouseX, uiState.mouseY, x, y, w, h);
+    draw8BitFrame(ctx, x, y, w, h, active ? '#ffd979' : hover ? '#fff3c7' : UI_THEME.card, active ? UI_THEME.warn : UI_THEME.border, true);
+    drawPixelIcon(ctx, icon, x + 18, y + Math.max(5, Math.floor((h - 32) / 2)), 2);
+    ctx.fillStyle = UI_THEME.ink;
+    ctx.font = 'bold 17px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(label, x + 58, y + h / 2 + 6);
+    registerButton(id, x, y, w, h, action);
+}
+
+function drawIconSmallButton(ctx, id, x, y, w, h, icon, action, color = UI_THEME.button) {
+    const disabled = !action || color === UI_THEME.buttonDisabled || color === '#95a5a6';
+    const hover = !disabled && isPointInRect(uiState.mouseX, uiState.mouseY, x, y, w, h);
+    draw8BitFrame(ctx, x, y, w, h, disabled ? UI_THEME.buttonDisabled : hover ? lightenColor(color) : color, UI_THEME.border, false);
+    drawPixelIcon(ctx, icon, x + Math.floor((w - 24) / 2), y + Math.floor((h - 24) / 2), 1.5);
+    registerButton(id, x, y, w, h, disabled ? null : action);
+}
+
+function drawOrderDock(ctx) {
+    const x = UI_ORDER_DOCK.x;
+    const y = UI_ORDER_DOCK.y;
+    drawRoundRect(ctx, x + 4, y + 6, UI_ORDER_DOCK.w, UI_ORDER_DOCK.h, 10, UI_THEME.shadow, null);
+    drawRoundRect(ctx, x, y, UI_ORDER_DOCK.w, UI_ORDER_DOCK.h, 10, UI_THEME.panel, UI_THEME.border);
+    drawRoundRect(ctx, x, y, UI_ORDER_DOCK.w, 42, 10, UI_THEME.header, UI_THEME.headerDark);
+    ctx.fillStyle = '#fffaf0';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('订单看板', x + 16, y + 27);
+    drawSmallButton(ctx, 'order-dock-more', x + UI_ORDER_DOCK.w - 72, y + 8, 50, 26, '详情', () => togglePanel('orders'), UI_THEME.button);
+
+    const contentX = x + 10;
+    const contentY = y + 50;
+    const contentW = UI_ORDER_DOCK.w - 20;
+    const contentH = UI_ORDER_DOCK.h - 60;
+    uiState.orderDockScroll = Math.min(uiState.orderDockScroll, getOrderDockMaxScroll());
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(contentX, contentY, contentW, contentH);
+    ctx.clip();
+    tasks.forEach((task, index) => {
+        const config = CROP_CONFIG[task.item];
+        if (!config) return;
+        const enough = inventory[task.item] >= task.amount;
+        const cardY = contentY + 6 + index * 70 - uiState.orderDockScroll;
+        if (cardY + 58 < contentY || cardY > contentY + contentH) return;
+        drawRoundRect(ctx, contentX, cardY, contentW, 58, 7, UI_THEME.card, enough ? UI_THEME.button : UI_THEME.borderSoft);
+        ctx.fillStyle = UI_THEME.ink;
+        ctx.font = 'bold 13px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${config.icon} ${config.name} x${task.amount}`, contentX + 12, cardY + 22);
+        ctx.fillStyle = enough ? UI_THEME.button : UI_THEME.muted;
+        ctx.font = '12px Arial';
+        ctx.fillText(`${inventory[task.item]}/${task.amount}  奖励 ${task.reward}币`, contentX + 12, cardY + 43);
+        drawSmallButton(ctx, `order-dock-${index}`, contentX + contentW - 74, cardY + 16, 62, 28, enough ? '交付' : '等待', () => deliverTask(index), enough ? UI_THEME.button : UI_THEME.buttonDisabled);
+    });
+    ctx.restore();
+}
+
+function drawStoryPopup(ctx) {
+    if (!uiState.activeStoryPopup && uiState.storyPopupQueue.length > 0) {
+        uiState.activeStoryPopup = uiState.storyPopupQueue.shift();
+    }
+    const letter = uiState.activeStoryPopup;
+    if (!letter) return;
+    const w = Math.min(660, Math.round(canvas.width * 0.56));
+    const h = Math.min(500, canvas.height - 160);
+    const x = Math.round((canvas.width - w) / 2);
+    const y = Math.round((canvas.height - h) / 2);
+    ctx.fillStyle = 'rgba(42, 47, 38, 0.34)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    drawRoundRect(ctx, x + 5, y + 7, w, h, 12, UI_THEME.shadow, null);
+    drawRoundRect(ctx, x, y, w, h, 12, '#fffaf0', '#d8caa2');
+    drawRoundRect(ctx, x, y, w, 50, 12, UI_THEME.header, UI_THEME.headerDark);
+    ctx.fillStyle = '#fffaf0';
+    ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(`新信件：${letter.title}`, x + 22, y + 32);
+    drawRoundRect(ctx, x + 30, y + 74, w - 60, h - 182, 8, '#fffdf6', '#eadfbd');
+    drawTextLine(ctx, `${letter.id} ${letter.title}`, x + 50, y + 108, UI_THEME.ink, 'bold 18px Arial');
+    let bodyY = y + 146;
+    letter.body.forEach(line => {
+        bodyY = drawWrappedText(ctx, line, x + 50, bodyY, w - 100, 28, '#3d4f48', '15px Arial');
+        bodyY += 8;
+    });
+    drawTextLine(ctx, '已收入手札，可在“爷爷的信”页重新阅读。', x + 34, y + h - 74, UI_THEME.muted, '13px Arial');
+    drawSmallButton(ctx, 'story-popup-open', x + w - 250, y + h - 54, 104, 34, '打开手札', () => {
+        uiState.activeTabs.journal = 'letters';
+        uiState.activeStoryLetter = letter.id;
+        const letterIndex = STORY_LETTERS.findIndex(item => item.id === letter.id);
+        if (letterIndex >= 0) uiState.storyListPage = Math.floor(letterIndex / 6);
+        closeStoryPopup(true);
+        uiState.activePanel = 'journal';
+        markTutorialJournalOpened();
+    }, UI_THEME.blue);
+    drawSmallButton(ctx, 'story-popup-close', x + w - 128, y + h - 54, 96, 34, '收下', () => closeStoryPopup(true), UI_THEME.button);
+}
+
+function showTileInfo(screenX, screenY, worldX, worldY) {
+    if (worldX < farmStartX || worldX > farmStartX + gridWidth || worldY < farmStartY || worldY > farmStartY + gridHeight) return false;
+    const col = Math.floor((worldX - farmStartX) / TILE_SIZE);
+    const row = Math.floor((worldY - farmStartY) / TILE_SIZE);
+    const cell = gridData[row]?.[col];
+    if (!cell) return false;
+    let title = `地块 (${row + 1}, ${col + 1})`;
+    let line1 = '状态：可种植';
+    let line2 = `当前工具：${getToolLabel(currentSelectedTool)}`;
+    if (cell.state === -1) {
+        line1 = `状态：未开垦，需要 ${UNLOCK_PRICE} 币`;
+        line2 = '点击可解锁周围土地';
+    } else if (cell.state === 1) {
+        const config = CROP_CONFIG[cell.cropType];
+        const left = Math.max(0, Math.ceil((getActualGrowTime(cell.cropType) / getGrowthMultiplier() - (Date.now() - cell.timer)) / 1000));
+        line1 = `作物：${config.icon} ${config.name}`;
+        line2 = `阶段：生长中，约 ${left}s 后成熟`;
+    } else if (cell.state === 2) {
+        const config = CROP_CONFIG[cell.cropType];
+        line1 = `作物：${config.icon} ${config.name}`;
+        line2 = '阶段：成熟，点击可收割';
+    } else if (cell.state === 4) {
+        const parent = gridData[cell.parentRow]?.[cell.parentCol];
+        const config = CROP_CONFIG[cell.cropType];
+        const mature = parent?.state === 2;
+        line1 = `作物：${config.icon} ${config.name} 的占位地块`;
+        line2 = mature ? '点击任意占位格可收获整株' : '生长中，占据 2x2 地块';
+    }
+    uiState.tileTip = { x: screenX + 12, y: screenY + 12, title, line1, line2, until: Date.now() + 3200 };
+    return true;
+}
+
+function getPanelIcon(id) {
+    const icons = { journal: '', seeds: '', build: '', orders: '', market: '' };
+    return icons[id] || '';
+}
+
+function drawStatusHUD(ctx) {
+    drawRoundRect(ctx, 14, 10, canvas.width - 28, 46, 8, UI_THEME.panel, UI_THEME.border);
+    ctx.fillStyle = UI_THEME.ink;
+    ctx.font = 'bold 17px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(`金币 ${coins}`, 32, 39);
+    ctx.fillText(`Lv.${playerLevel}`, 146, 39);
+    ctx.fillText(`EXP ${playerExp}/${getMaxExp()}`, 226, 39);
+    ctx.fillText(`时间 ${getClockLabel()}`, 426, 39);
+    ctx.fillText(`${WEATHER_CONFIG[weather.type].icon} ${WEATHER_CONFIG[weather.type].name}`, 570, 39);
+    ctx.fillText(`生长 ${Math.round(getGrowthMultiplier() * 100)}%`, 718, 39);
+    ctx.fillText(`工具 ${getToolLabel(currentSelectedTool)}`, 868, 39);
+    ctx.fillText(`视野 ${Math.round((camera.zoom || 1) * 100)}%`, canvas.width - 360, 39);
+    ctx.textAlign = 'right';
+    ctx.fillText('滚轮/双指缩放 · 长按看地块', canvas.width - 72, 39);
+    drawSmallButton(ctx, 'settings-toggle', canvas.width - 54, 16, 32, 28, '设置', () => toggleSettings(), UI_THEME.header);
+}
+
+function drawUIPanel(ctx, panelId) {
+    const titles = { journal: '手札', seeds: '种子', build: '建造', orders: '订单', market: '市场' };
+    const title = titles[panelId] || '';
+    drawRoundRect(ctx, UI_PANEL.x + 4, UI_PANEL.y + 6, UI_PANEL.w, UI_PANEL.h, 10, UI_THEME.shadow, null);
+    drawRoundRect(ctx, UI_PANEL.x, UI_PANEL.y, UI_PANEL.w, UI_PANEL.h, 10, UI_THEME.panel, UI_THEME.border);
+    drawRoundRect(ctx, UI_PANEL.x, UI_PANEL.y, UI_PANEL.w, 46, 10, UI_THEME.header, UI_THEME.headerDark);
+    ctx.fillStyle = '#fffaf0';
+    ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${getPanelIcon(panelId)} ${title}`, UI_PANEL.x + 18, UI_PANEL.y + 30);
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#f7ecd1';
+    ctx.fillText('内容较多时可滚动', UI_PANEL.x + UI_PANEL.w - 58, UI_PANEL.y + 29);
+    drawSmallButton(ctx, 'close-panel', UI_PANEL.x + UI_PANEL.w - 42, UI_PANEL.y + 9, 28, 26, '×', () => closePanel(), UI_THEME.danger);
+    drawPanelTabs(ctx, panelId);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(UI_CONTENT.x, UI_CONTENT.y, UI_CONTENT.w, UI_CONTENT.h);
+    ctx.clip();
+    if (panelId === 'journal') drawJournalPanel(ctx);
+    if (panelId === 'seeds') drawSeedsPanel(ctx);
+    if (panelId === 'build') drawBuildPanel(ctx);
+    if (panelId === 'orders') drawOrdersPanel(ctx);
+    if (panelId === 'market') drawMarketPanel(ctx);
+    ctx.restore();
+    drawScrollHint(ctx, panelId);
+}
+
+function drawPanelTabs(ctx, panelId) {
+    if (panelId === 'journal') {
+        drawTabs(ctx, 'journal', [
+            ['codex', '图鉴'],
+            ['letters', '爷爷的信'],
+            ['talents', '天赋'],
+            ['miracle', '奇迹'],
+            ['visitors', '访客'],
+            ['endings', '结局']
+        ], UI_PANEL.x + 18, UI_PANEL.y + 58);
+    }
+    if (panelId === 'build') {
+        drawTabs(ctx, 'build', [
+            ['ranch', '养殖'],
+            ['processing', '加工'],
+            ['miracle', '奇迹']
+        ], UI_PANEL.x + 18, UI_PANEL.y + 58);
+    }
+    if (panelId === 'journal' && uiState.activeTabs.journal === 'codex') {
+        drawTabs(ctx, 'codex', [
+            ['crops', '作物'],
+            ['animals', '动物'],
+            ['processed', '加工品'],
+            ['miracle', '奇迹']
+        ], UI_PANEL.x + 18, UI_PANEL.y + 92);
+    }
+}
+
+function drawBottomNav(ctx) {
+    const nav = [
+        { id: 'journal', icon: '📖', label: '手札' },
+        { id: 'seeds', icon: '🌱', label: '种子' },
+        { id: 'build', icon: '⚒', label: '建造' },
+        { id: 'market', icon: '📈', label: '市场' }
+    ];
+    const y = canvas.height - UI_BAR_HEIGHT + 8;
+    const itemW = Math.min(190, Math.max(145, Math.floor((canvas.width - 250) / nav.length)));
+    const gap = 18;
+    const startX = (canvas.width - (itemW * nav.length + gap * (nav.length - 1))) / 2;
+    drawRoundRect(ctx, startX - 18, y - 6, itemW * nav.length + gap * (nav.length - 1) + 36, 58, 10, 'rgba(84, 72, 50, 0.76)', UI_THEME.border);
+    nav.forEach((item, index) => {
+        const x = startX + index * (itemW + gap);
+        const active = uiState.activePanel === item.id;
+        const hover = isPointInRect(uiState.mouseX, uiState.mouseY, x, y, itemW, 42);
+        drawRoundRect(ctx, x, y, itemW, 42, 8, active ? '#ffd979' : hover ? '#fff3c7' : UI_THEME.card, active ? UI_THEME.warn : UI_THEME.border);
+        ctx.fillStyle = UI_THEME.ink;
+        ctx.font = 'bold 17px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${item.icon} ${item.label}`, x + itemW / 2, y + 27);
+        registerButton(`nav-${item.id}`, x, y, itemW, 42, () => togglePanel(item.id));
+    });
+}
+
+function drawSkillDock(ctx) {
+    const dockW = 132;
+    const dockH = 196;
+    const x = 20;
+    const y = 74;
+    draw8BitFrame(ctx, x - 8, y - 8, dockW + 16, dockH + 16, 'rgba(230, 238, 199, 0.88)', UI_THEME.border, true);
+    const ids = ['sow', 'rain', 'harvest'];
+    const labels = { sow: '播种', rain: '求雨', harvest: '收割' };
+    ids.forEach((id, index) => {
+        const skill = skills[id];
+        const bx = x;
+        const by = y + index * 64;
+        const timeLeft = Math.max(0, Math.ceil((getSkillCd(id) - (Date.now() - skill.lastUsed)) / 1000));
+        const ready = timeLeft <= 0;
+        const label = ready ? `${skill.name}\n${labels[id]}` : `${skill.name}\n${timeLeft}s`;
+        drawMultiLineButton(ctx, `dock-skill-${id}`, bx, by, dockW, 54, label, () => useSkill(id), ready ? UI_THEME.purple : UI_THEME.buttonDisabled);
+    });
+}
+
+function drawZoomDock(ctx) {
+    const x = 20;
+    const y = 300;
+    draw8BitFrame(ctx, x - 8, y - 8, 190, 168, 'rgba(230, 238, 199, 0.82)', UI_THEME.border, true);
+    ctx.fillStyle = UI_THEME.ink;
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('视野缩放', x + 87, y + 18);
+    drawSmallButton(ctx, 'zoom-in', x, y + 32, 82, 44, '+', () => zoomCamera(1.18), UI_THEME.blue);
+    drawSmallButton(ctx, 'zoom-out', x + 94, y + 32, 82, 44, '-', () => zoomCamera(1 / 1.18), UI_THEME.blue);
+    drawSmallButton(ctx, 'zoom-reset', x, y + 90, 176, 42, `${Math.round((camera.zoom || 1) * 100)}%`, () => resetCameraZoom(), UI_THEME.muted);
+}
+
+function drawSettingsPanel(ctx) {
+    const x = UI_SETTINGS.x;
+    const y = UI_SETTINGS.y;
+    drawRoundRect(ctx, x + 4, y + 6, UI_SETTINGS.w, UI_SETTINGS.h, 10, UI_THEME.shadow, null);
+    drawRoundRect(ctx, x, y, UI_SETTINGS.w, UI_SETTINGS.h, 10, UI_THEME.panel, UI_THEME.border);
+    drawRoundRect(ctx, x, y, UI_SETTINGS.w, 42, 10, UI_THEME.header, UI_THEME.headerDark);
+    ctx.fillStyle = '#fffaf0';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('设置', x + 16, y + 27);
+    drawSmallButton(ctx, 'close-settings', x + UI_SETTINGS.w - 42, y + 8, 28, 26, '×', () => toggleSettings(false), UI_THEME.danger);
+    drawTextLine(ctx, `当前时间：${getClockLabel()}`, x + 22, y + 72, UI_THEME.ink, '15px Arial');
+    drawTextLine(ctx, `当前视野：${Math.round((camera.zoom || 1) * 100)}%`, x + 22, y + 98, UI_THEME.ink, '15px Arial');
+    drawSmallButton(ctx, 'setting-save', x + 22, y + 124, 142, 34, '手动保存', () => {
+        saveGame();
+        effectText = '已保存';
+        effectAlpha = 1.0;
+    }, UI_THEME.button);
+    drawSmallButton(ctx, 'setting-reset-zoom', x + 184, y + 124, 142, 34, '重置视野', () => resetCameraZoom(), UI_THEME.blue);
+    drawSmallButton(ctx, 'setting-audio', x + 22, y + 174, 142, 34, audioEnabled ? '音效 开' : '音效 关', () => toggleAudio(), audioEnabled ? UI_THEME.button : UI_THEME.buttonDisabled);
+    drawSmallButton(ctx, 'setting-shake', x + 184, y + 174, 142, 34, uiPreferences?.screenShake === false ? '震动 关' : '震动 开', () => toggleScreenShake(), uiPreferences?.screenShake === false ? UI_THEME.buttonDisabled : UI_THEME.button);
+    drawTextLine(ctx, '关闭后收割、共振、稀有发现都不会晃动画面。', x + 22, y + 226, UI_THEME.muted, '13px Arial');
+    drawSmallButton(ctx, 'setting-reset-game', x + 184, y + 238, 142, 34, '重置世界', () => resetGame(), UI_THEME.danger);
+}
+
+function drawTileTip(ctx) {
+    if (!uiState.tileTip || Date.now() > uiState.tileTip.until) {
+        uiState.tileTip = null;
+        return;
+    }
+    const tip = uiState.tileTip;
+    const x = Math.min(canvas.width - 260, Math.max(16, tip.x));
+    const y = Math.min(canvas.height - UI_BAR_HEIGHT - 124, Math.max(58, tip.y));
+    drawRoundRect(ctx, x + 3, y + 5, 244, 104, 8, UI_THEME.shadow, null);
+    drawRoundRect(ctx, x, y, 244, 104, 8, UI_THEME.panel, UI_THEME.border);
+    drawTextLine(ctx, tip.title, x + 14, y + 28, UI_THEME.ink, 'bold 15px Arial');
+    drawTextLine(ctx, tip.line1, x + 14, y + 56, UI_THEME.text, '13px Arial');
+    drawTextLine(ctx, tip.line2, x + 14, y + 80, UI_THEME.text, '13px Arial');
+}
+
+function drawTabs(ctx, panelId, tabs, x, y) {
+    let cursorX = x;
+    tabs.forEach(([id, label]) => {
+        const active = uiState.activeTabs[panelId] === id;
+        const width = Math.max(70, label.length * 16 + 26);
+        drawRoundRect(ctx, cursorX, y, width, 30, 7, active ? '#ffd979' : '#f2ead7', active ? UI_THEME.warn : UI_THEME.borderSoft);
+        ctx.fillStyle = UI_THEME.ink;
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, cursorX + width / 2, y + 20);
+        registerButton(`tab-${panelId}-${id}`, cursorX, y, width, 30, () => {
+            uiState.activeTabs[panelId] = id;
+            if (panelId === 'codex') uiState.scroll.journal = 0;
+            else uiState.scroll[panelId] = 0;
+        });
+        cursorX += width + 8;
+    });
+}
+
+function drawInfoCard(ctx, x, y, w, h, title, body, accent) {
+    draw8BitFrame(ctx, x, y, w, h, UI_THEME.card, UI_THEME.borderSoft, false);
+    ctx.fillStyle = accent || UI_THEME.button;
+    ctx.fillRect(x + 6, y + 8, 5, h - 16);
+    drawTextLine(ctx, title, x + 14, y + 25, UI_THEME.ink, 'bold 15px Arial');
+    drawTextLine(ctx, body, x + 14, y + 50, UI_THEME.text, '13px Arial');
+}
+
+function drawSmallButton(ctx, id, x, y, w, h, label, action, color = UI_THEME.button) {
+    if (isClippedContentControl(id, y, h)) return;
+    const disabled = !action || color === '#95a5a6' || color === UI_THEME.buttonDisabled;
+    const hover = !disabled && isPointInRect(uiState.mouseX, uiState.mouseY, x, y, w, h);
+    draw8BitFrame(ctx, x, y, w, h, disabled ? UI_THEME.buttonDisabled : hover ? lightenColor(color) : color, UI_THEME.border, false);
+    ctx.fillStyle = '#fffaf0';
+    ctx.font = 'bold 13px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x + w / 2, y + h / 2 + 5);
+    registerButton(id, x, y, w, h, disabled ? null : action);
+}
+
+function drawMultiLineButton(ctx, id, x, y, w, h, label, action, color = UI_THEME.button) {
+    const disabled = !action || color === '#95a5a6' || color === UI_THEME.buttonDisabled;
+    const hover = !disabled && isPointInRect(uiState.mouseX, uiState.mouseY, x, y, w, h);
+    draw8BitFrame(ctx, x, y, w, h, disabled ? UI_THEME.buttonDisabled : hover ? lightenColor(color) : color, UI_THEME.border, false);
+    ctx.fillStyle = '#fffaf0';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    const lines = label.split('\n');
+    lines.forEach((line, index) => ctx.fillText(line, x + w / 2, y + 21 + index * 19));
+    registerButton(id, x, y, w, h, disabled ? null : action);
+}
+
+function drawScrollHint(ctx, panelId) {
+    const maxScroll = getPanelMaxScroll(panelId);
+    const trackX = UI_PANEL.x + UI_PANEL.w - 24;
+    const trackY = UI_CONTENT.y;
+    const trackH = UI_CONTENT.h;
+    drawRoundRect(ctx, trackX, trackY, 10, trackH, 5, maxScroll > 0 ? 'rgba(118, 146, 127, 0.24)' : 'rgba(118, 146, 127, 0.10)', null);
+    if (maxScroll <= 0) {
+        ctx.fillStyle = UI_THEME.muted;
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText('已显示全部内容', UI_PANEL.x + UI_PANEL.w - 34, UI_CONTENT.bottom - 8);
+        return;
+    }
+    const thumbH = Math.max(44, trackH * (trackH / (trackH + maxScroll)));
+    const thumbY = trackY + (trackH - thumbH) * (uiState.scroll[panelId] / maxScroll);
+    drawRoundRect(ctx, trackX - 1, thumbY, 12, thumbH, 6, UI_THEME.header, UI_THEME.border);
+}
+
+function lightenColor(color) {
+    const map = {
+        '#27ae60': '#2ecc71',
+        '#f39c12': '#f5b041',
+        '#8e44ad': '#a569bd',
+        '#7f8c8d': '#95a5a6',
+        '#e74c3c': '#ec7063',
+        '#2980b9': '#3498db',
+        [UI_THEME.button]: UI_THEME.buttonHover,
+        [UI_THEME.warn]: '#e3ad3d',
+        [UI_THEME.danger]: '#d56b58',
+        [UI_THEME.blue]: '#76a3b9',
+        [UI_THEME.purple]: '#a17ab6',
+        [UI_THEME.header]: '#a17a53',
+        [UI_THEME.muted]: '#819282'
+    };
+    return map[color] || color;
+}
+
+// DOM control handoff.
+// Buttons and tabs should not be painted on Canvas anymore. Canvas only reports
+// their hit boxes and callbacks; js/ui/bitcn-dom-ui.js renders the actual UI.
+const drawCanvasUIBeforeDomControls = drawCanvasUI;
+drawCanvasUI = function drawCanvasUI(ctx) {
+    window.__bitcnControls = [];
+    drawCanvasUIBeforeDomControls(ctx);
+};
+
+function registerDomControl(id, x, y, w, h, label, action, options = {}) {
+    if (typeof isClippedContentControl === 'function' && isClippedContentControl(id, y, h)) return;
+    const disabled = !action || options.disabled;
+    const freeControl = id.startsWith('tab-') || id.startsWith('setting-') || id === 'settings-toggle' || id === 'close-settings' || id === 'close-panel';
+    const clip = uiState.activePanel && !freeControl ? {
+        x: UI_CONTENT.x,
+        y: UI_CONTENT.y,
+        w: UI_CONTENT.w,
+        h: UI_CONTENT.h
+    } : null;
+    registerButton(id, x, y, w, h, disabled ? null : action);
+    window.__bitcnControls = window.__bitcnControls || [];
+    window.__bitcnControls.push({
+        id,
+        x,
+        y,
+        w,
+        h,
+        label: String(label || ''),
+        action: disabled ? null : action,
+        disabled,
+        kind: options.kind || 'button',
+        active: !!options.active,
+        danger: !!options.danger,
+        compact: !!options.compact,
+        clip
+    });
+}
+
+drawSmallButton = function drawSmallButton(ctx, id, x, y, w, h, label, action, color = UI_THEME.button) {
+    registerDomControl(id, x, y, w, h, label, action, {
+        danger: color === UI_THEME.danger || color === '#e74c3c',
+        disabled: color === '#95a5a6' || color === UI_THEME.buttonDisabled,
+        compact: w <= 52 || h <= 30
+    });
+};
+
+drawMultiLineButton = function drawMultiLineButton(ctx, id, x, y, w, h, label, action, color = UI_THEME.button) {
+    registerDomControl(id, x, y, w, h, String(label || '').replace(/\n/g, ' '), action, {
+        disabled: color === '#95a5a6' || color === UI_THEME.buttonDisabled,
+        compact: w <= 90 || h <= 38
+    });
+};
+
+drawIconSmallButton = function drawIconSmallButton(ctx, id, x, y, w, h, icon, action, color = UI_THEME.button) {
+    const iconLabels = { close: 'x', gear: '设置', check: 'ok', lock: '锁' };
+    registerDomControl(id, x, y, w, h, iconLabels[icon] || '', action, {
+        danger: icon === 'close' || color === UI_THEME.danger,
+        disabled: color === '#95a5a6' || color === UI_THEME.buttonDisabled,
+        compact: true
+    });
+};
+
+drawPixelIconButton = function drawPixelIconButton(ctx, id, x, y, w, h, icon, label, action, active = false) {
+    registerDomControl(id, x, y, w, h, label, action, {
+        active,
+        kind: 'nav'
+    });
+};
+
+drawTabs = function drawTabs(ctx, panelId, tabs, x, y) {
+    let cursorX = x;
+    tabs.forEach(([id, label]) => {
+        const width = Math.max(70, label.length * 16 + 26);
+        registerDomControl(`tab-${panelId}-${id}`, cursorX, y, width, 30, label, () => {
+            uiState.activeTabs[panelId] = id;
+            if (panelId === 'codex') uiState.scroll.journal = 0;
+            else uiState.scroll[panelId] = 0;
+        }, {
+            active: uiState.activeTabs[panelId] === id,
+            kind: 'tab',
+            compact: true
+        });
+        cursorX += width + 8;
+    });
+};
+
+
+// DOM mode hard bypass. bitcn-dom-ui.js calls this after it loads.
+// Keep the old Canvas helpers available for state utilities, but stop drawing
+// or scrolling Canvas UI when the DOM shell is active.
+(function installCanvasUiDomModeHardBypassFactory() {
+    window.installCanvasUiHardBypass = function installCanvasUiHardBypass() {
+        window.__bitcnDomMode = true;
+        const noopDrawCanvasUI = function drawCanvasUI() {
+            if (window.uiState) window.uiState.buttons = [];
+            window.__bitcnControls = [];
+        };
+        try { drawCanvasUI = window.drawCanvasUI = noopDrawCanvasUI; } catch (error) { window.drawCanvasUI = noopDrawCanvasUI; }
+
+        const domWheelBypass = function handleCanvasUIWheel() {
+            return false;
+        };
+        try { handleCanvasUIWheel = window.handleCanvasUIWheel = domWheelBypass; } catch (error) { window.handleCanvasUIWheel = domWheelBypass; }
+
+        const domClickGuard = function handleCanvasUIClick() {
+            return !!(window.uiState?.activePanel || window.uiState?.settingsOpen || window.uiState?.activeStoryPopup);
+        };
+        try { handleCanvasUIClick = window.handleCanvasUIClick = domClickGuard; } catch (error) { window.handleCanvasUIClick = domClickGuard; }
+
+        const domKeyBypass = function handleCanvasUIKeyDown() {
+            return false;
+        };
+        try { handleCanvasUIKeyDown = window.handleCanvasUIKeyDown = domKeyBypass; } catch (error) { window.handleCanvasUIKeyDown = domKeyBypass; }
+    };
+
+    if (window.__bitcnDomMode) window.installCanvasUiHardBypass();
+})();

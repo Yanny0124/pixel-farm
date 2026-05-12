@@ -67,3 +67,9 @@ dist/pixel-farm-playable.zip
 ```
 
 这个压缩包只包含运行所需文件，不包含计划书、开发素材和 Office 临时文件。
+
+## Third-party UI assets
+
+- Pxlkit icon packs are used from `@pxlkit/ui`, `@pxlkit/gamification`, and `@pxlkit/weather`.
+  Asset license: Pxlkit Asset License, free community use with visible attribution.
+- 8bitcn/ui component source and retro style references are used under the MIT License.
