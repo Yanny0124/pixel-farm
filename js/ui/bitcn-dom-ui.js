@@ -1088,36 +1088,193 @@
     function renderEndingsDom(content) {
         if (typeof checkEndingUnlocks === 'function') checkEndingUnlocks(true);
         const entries = Object.entries(ENDING_CONFIG);
-        const unlockedCount = Object.keys(endingState.unlocked || {}).length;
-        content.appendChild(sectionTitle(`结局收藏：${unlockedCount}/${entries.length}`));
+        const unlockedCount = typeof getUnlockedEndingCount === 'function' ? getUnlockedEndingCount() : Object.keys(endingState.unlocked || {}).length;
+        const archivedCount = typeof getArchivedEndingCount === 'function' ? getArchivedEndingCount() : Object.keys(endingState.archive || endingState.unlocked || {}).length;
+        const totalCount = entries.length;
+        const activeId = window.uiState.activeEnding && ENDING_CONFIG[window.uiState.activeEnding]
+            ? window.uiState.activeEnding
+            : entries.find(([id]) => endingState.unlocked?.[id])?.[0]
+                || entries.find(([id]) => endingState.archive?.[id])?.[0]
+                || entries[0]?.[0];
+
+        const summary = document.createElement('section');
+        summary.className = 'bitcn-ending-summary bitcn-year-ring-summary';
+        const summaryTitle = document.createElement('strong');
+        summaryTitle.textContent = `结局收藏：本轮 ${unlockedCount}/${totalCount} ｜ 永久归档 ${archivedCount}/${totalCount}`;
+        const summaryBody = document.createElement('span');
+        summaryBody.textContent = typeof getYearRingBlessingSummary === 'function'
+            ? getYearRingBlessingSummary()
+            : '全结局后可开启新的年轮。';
+        const summaryHint = document.createElement('small');
+        summaryHint.textContent = endingState.afterEnding?.active
+            ? `后日谈进行中：${ENDING_CONFIG[endingState.afterEnding.currentEndingId]?.title || '继续经营这片土地'}`
+            : '解锁结局后先读完整终章文本，默认继续当前农场；本轮全结局后才可开启新的年轮。';
+        summary.append(summaryTitle, summaryBody, summaryHint);
+        content.appendChild(summary);
+
+        if (activeId) {
+            const ending = ENDING_CONFIG[activeId];
+            const unlocked = !!endingState.unlocked?.[activeId];
+            const archived = !!endingState.archive?.[activeId];
+            const detail = document.createElement('article');
+            detail.className = `bitcn-ending-detail bitcn-ending-story ${unlocked ? '' : 'is-locked'} ${archived ? 'is-archived' : ''}`;
+
+            const title = document.createElement('strong');
+            title.textContent = unlocked
+                ? `${ending.icon || ''} ${ending.longTitle || ending.title}`
+                : archived
+                    ? `${ending.icon || ''} ${ending.title}（永久归档，本轮未重现）`
+                    : '结局剪影';
+            detail.appendChild(title);
+
+            if (unlocked) {
+                const chapter = document.createElement('div');
+                chapter.className = 'bitcn-ending-longtext';
+                (ending.longText || ending.text || []).forEach(line => {
+                    const p = document.createElement('p');
+                    p.textContent = line;
+                    chapter.appendChild(p);
+                });
+                detail.appendChild(chapter);
+
+                if (ending.epilogue?.length) {
+                    const epilogueTitle = document.createElement('h4');
+                    epilogueTitle.textContent = ending.epilogueTitle || '结局之后';
+                    detail.appendChild(epilogueTitle);
+                    ending.epilogue.forEach(line => {
+                        const p = document.createElement('p');
+                        p.textContent = line;
+                        detail.appendChild(p);
+                    });
+                }
+
+                if (ending.continueHint) {
+                    const hint = document.createElement('small');
+                    hint.textContent = `继续经营：${ending.continueHint}`;
+                    detail.appendChild(hint);
+                }
+
+                const actions = document.createElement('div');
+                actions.className = 'bitcn-button-row bitcn-ending-actions';
+                const rewardClaimed = !!endingState.claimedRewards?.[activeId];
+                const afterActive = !!endingState.afterEnding?.active && endingState.afterEnding.currentEndingId === activeId;
+
+                actions.appendChild(createBitcnButton(
+                    afterActive ? '后日谈进行中' : '继续经营这片土地',
+                    'bitcn-mini-button bitcn-primary-action',
+                    () => {
+                        if (typeof continueAfterEnding === 'function') continueAfterEnding(activeId);
+                        renderAppPanel(true);
+                    },
+                    afterActive
+                ));
+
+                actions.appendChild(createBitcnButton(
+                    rewardClaimed ? `奖励已领取：${typeof getEndingRewardText === 'function' ? getEndingRewardText(activeId) : ''}` : `领取奖励：${typeof getEndingRewardText === 'function' ? getEndingRewardText(activeId) : '终章奖励'}`,
+                    'bitcn-mini-button',
+                    () => {
+                        if (typeof claimEndingReward === 'function') claimEndingReward(activeId);
+                        renderAppPanel(true);
+                    },
+                    rewardClaimed || !(typeof canClaimEndingReward === 'function' && canClaimEndingReward(activeId))
+                ));
+
+                const canCycle = typeof canStartNewYearCycle === 'function' && canStartNewYearCycle();
+                const cycleLabel = canCycle ? '开启新的年轮' : (typeof getNewYearCycleRequirementText === 'function' ? `新的年轮：${getNewYearCycleRequirementText()}` : '新的年轮：全结局后解锁');
+                actions.appendChild(createBitcnButton(
+                    cycleLabel,
+                    'bitcn-mini-button bitcn-year-ring-button',
+                    () => {
+                        if (typeof startNewYearCycle === 'function') startNewYearCycle();
+                        renderAppPanel(true);
+                    },
+                    !canCycle
+                ));
+
+                detail.appendChild(actions);
+            } else if (archived) {
+                const p = document.createElement('p');
+                p.textContent = '这个结局已经在永久归档中。本轮重新达成条件后，可再次阅读完整后日谈并领取本轮奖励。';
+                detail.appendChild(p);
+            } else {
+                const p = document.createElement('p');
+                p.textContent = '继续推进奇迹、访客、图鉴与加工系统，结局会在条件满足时自动归档。';
+                detail.appendChild(p);
+            }
+
+            content.appendChild(detail);
+        }
+
+        content.appendChild(sectionTitle('结局列表'));
         const list = document.createElement('div');
-        list.className = 'bitcn-list';
+        list.className = 'bitcn-list bitcn-ending-list';
         entries.forEach(([id, ending]) => {
             const unlocked = !!endingState.unlocked?.[id];
+            const archived = !!endingState.archive?.[id];
             const unread = unlocked && !endingState.read?.[id];
+            const active = id === activeId;
             const card = document.createElement('button');
             card.type = 'button';
-            card.className = `bitcn-build-card bitcn-ending-card ${unlocked ? '' : 'is-locked'} ${unread ? 'is-unread' : ''}`;
+            card.className = `bitcn-build-card bitcn-ending-card ${unlocked ? '' : 'is-locked'} ${archived ? 'is-archived' : ''} ${unread ? 'is-unread' : ''} ${active ? 'is-active' : ''}`;
             const body = document.createElement('div');
             const title = document.createElement('strong');
-            title.textContent = unlocked ? `${ending.icon || ''} ${ending.title}${unread ? ' •' : ''}` : '结局剪影';
+            title.textContent = unlocked
+                ? `${ending.icon || ''} ${ending.title}${unread ? ' •' : ''}`
+                : archived
+                    ? `${ending.icon || ''} ${ending.title}（永久归档）`
+                    : '结局剪影';
             const desc = document.createElement('span');
-            desc.textContent = unlocked ? (ending.text || []).join(' ') : '继续推进奇迹、访客、图鉴与加工系统。';
+            desc.textContent = unlocked
+                ? (ending.text || []).join(' ')
+                : archived
+                    ? '本轮尚未重新达成。永久归档会保留在新的年轮中。'
+                    : '继续推进奇迹、访客、图鉴与加工系统。';
             const meta = document.createElement('small');
-            meta.textContent = unlocked ? '点击标记为已读' : '尚未解锁';
+            if (unlocked && typeof canClaimEndingReward === 'function' && canClaimEndingReward(id)) meta.textContent = '可领取终章奖励';
+            else if (unlocked) meta.textContent = active ? '正在查看完整终章' : '点击查看完整终章';
+            else if (archived) meta.textContent = '永久归档，本轮未解锁';
+            else meta.textContent = '尚未解锁';
             body.append(title, desc, meta);
             card.appendChild(body);
-            card.disabled = !unlocked;
+            card.disabled = !unlocked && !archived;
             card.addEventListener('click', event => {
                 event.stopPropagation();
-                if (!unlocked) return;
+                if (!unlocked && !archived) return;
                 window.uiState.activeEnding = id;
-                if (typeof markEndingRead === 'function') markEndingRead(id);
+                if (unlocked && typeof markEndingRead === 'function') markEndingRead(id);
                 renderAppPanel(true);
             });
             list.appendChild(card);
         });
         content.appendChild(list);
+
+        if (typeof getPostEndingGoalIds === 'function') {
+            content.appendChild(sectionTitle('结局后的目标'));
+            const goals = document.createElement('div');
+            goals.className = 'bitcn-list bitcn-post-goal-list';
+            getPostEndingGoalIds().forEach(id => {
+                const goal = POST_ENDING_GOALS[id];
+                const ready = typeof isPostEndingGoalUnlocked === 'function' && isPostEndingGoalUnlocked(id);
+                const claimed = !!endingState.claimedPostGoals?.[id];
+                const card = document.createElement('article');
+                card.className = `bitcn-build-card bitcn-post-goal-card ${ready ? 'is-ready' : ''} ${claimed ? 'is-claimed' : ''}`;
+                const body = document.createElement('div');
+                const title = document.createElement('strong');
+                title.textContent = `${goal.icon || '✦'} ${goal.title}`;
+                const desc = document.createElement('span');
+                desc.textContent = goal.text || '';
+                const meta = document.createElement('small');
+                meta.textContent = claimed ? '已完成' : (typeof getPostEndingGoalProgressText === 'function' ? getPostEndingGoalProgressText(id) : '进行中');
+                body.append(title, desc, meta);
+                const action = createBitcnButton(claimed ? '已领取' : ready ? '领取' : '未完成', 'bitcn-mini-button', () => {
+                    if (typeof claimPostEndingGoal === 'function') claimPostEndingGoal(id);
+                    renderAppPanel(true);
+                }, claimed || !ready);
+                card.append(body, action);
+                goals.appendChild(card);
+            });
+            content.appendChild(goals);
+        }
     }
 
     function renderOrdersDom(content) {
