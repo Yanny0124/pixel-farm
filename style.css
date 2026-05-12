@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 html,
 body {
     width: 100%;
@@ -24,10 +25,22 @@ body {
     --farm-leaf: #7f9f67;
     --farm-leaf-dark: #587456;
     --farm-red: #d96b4b;
+=======
+body { 
+    margin: 0; 
+    padding: 0; 
+    background-color: #2c3e50; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    height: 100vh; 
+    font-family: sans-serif; 
+>>>>>>> 7aa86a2c4b975efe113d769e609e485e7e037be8
 }
 
 .main-layout { 
     display: flex; 
+<<<<<<< HEAD
     gap: 0; 
     align-items: center; 
     justify-content: center; 
@@ -35,12 +48,21 @@ body {
     height: 100vh;
     max-width: none; 
     padding: 0;
+=======
+    gap: 20px; 
+    align-items: flex-start; 
+    justify-content: center; 
+    width: 100%; 
+    max-width: 1500px; 
+    padding: 20px;
+>>>>>>> 7aa86a2c4b975efe113d769e609e485e7e037be8
 }
 
 #game-container { 
     display: flex; 
     flex-direction: column; 
     align-items: center; 
+<<<<<<< HEAD
     gap: 0; 
     position: relative;
     width: min(100vw, calc(100vh * 16 / 9));
@@ -1723,3 +1745,197 @@ button.bitcn-build-card:disabled {
 .bitcn-market-panel .bitcn-panel-header {
     flex: 0 0 auto;
 }
+=======
+    gap: 10px; 
+}
+
+/* ================== RPG 经验条样式 ================== */
+#rpg-bar { 
+    width: 900px; /* 适配大地图画板宽度 */
+    background-color: #ecf0f1; 
+    border-radius: 8px; 
+    padding: 10px; 
+    display: flex; 
+    align-items: center; 
+    gap: 15px; 
+    box-sizing: border-box; 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+.level-badge { 
+    background-color: #f1c40f; 
+    color: #d35400; 
+    font-weight: bold; 
+    font-size: 20px; 
+    padding: 5px 15px; 
+    border-radius: 20px; 
+    text-shadow: 1px 1px 0px rgba(255,255,255,0.5);
+}
+.exp-container { 
+    flex: 1; 
+    background-color: #bdc3c7; 
+    height: 15px; 
+    border-radius: 10px; 
+    overflow: hidden; 
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+}
+.exp-fill { 
+    height: 100%; 
+    background: linear-gradient(90deg, #3498db, #2ecc71); 
+    width: 0%; 
+    transition: width 0.3s ease; 
+}
+.exp-text { 
+    font-weight: bold; 
+    color: #2c3e50; 
+    font-size: 14px; 
+    width: 120px; 
+    text-align: right;
+}
+
+/* ================== 顶部工具栏 ================== */
+#toolbar { 
+    display: flex; 
+    gap: 6px; 
+    background-color: #34495e; 
+    padding: 10px; 
+    border-radius: 8px; 
+    align-items: center; 
+    flex-wrap: wrap; 
+    justify-content: center; 
+    width: 900px; /* 适配大地图画板宽度 */
+    box-sizing: border-box;
+}
+.divider { width: 2px; height: 25px; background-color: #7f8c8d; margin: 0 2px; } 
+
+.seed-btn { 
+    background-color: #ecf0f1; 
+    border: 2px solid transparent; 
+    padding: 6px 10px; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    font-weight: bold; 
+    color: #333; 
+    transition: 0.2s; 
+    font-size: 13px;
+}
+.seed-btn:hover:not(:disabled) { background-color: #bdc3c7; }
+.seed-btn.selected { border-color: #e74c3c; background-color: #fff; box-shadow: 0 0 8px #e74c3c; }
+.seed-btn:disabled { opacity: 0.5; cursor: not-allowed; background-color: #95a5a6; } /* 未解锁的锁定状态 */
+
+/* 特殊按钮颜色区分 */
+.animal-btn { background-color: #f1c40f; }
+.bee-btn { background-color: #f39c12; color: white; }
+.reset-btn { background-color: #e74c3c; color: white; }
+
+/* 技能与升级按钮组合 */
+.skill-group { 
+    display: flex; 
+    background-color: #8e44ad; 
+    border-radius: 4px; 
+    overflow: hidden; 
+    box-shadow: 0 2px #732d91;
+}
+.skill-btn { 
+    background-color: transparent; 
+    border: none; 
+    padding: 6px 10px; 
+    cursor: pointer; 
+    font-weight: bold; 
+    color: white; 
+    transition: 0.2s; 
+    font-size: 13px;
+}
+.skill-btn:hover:not(:disabled) { background-color: rgba(255,255,255,0.1); }
+.skill-btn.on-cd { background-color: #7f8c8d; color: #ccc; cursor: not-allowed; }
+.upgrade-btn { 
+    background-color: #9b59b6; 
+    border: none; 
+    border-left: 1px solid rgba(0,0,0,0.2); 
+    padding: 6px; 
+    cursor: pointer; 
+    color: #f1c40f; 
+    font-weight: bold; 
+    font-size: 11px; 
+    transition: 0.2s;
+}
+.upgrade-btn:hover { background-color: #af7ac5; color: #fff; }
+
+/* ================== 画布 ================== */
+canvas { 
+    background-color: #e8f5e9; 
+    box-shadow: 0 0 20px rgba(0,0,0,0.5); 
+    image-rendering: pixelated; 
+    border-radius: 4px; 
+}
+
+/* ================== 左右两侧面板通用 ================== */
+#market-panel, #task-panel { 
+    background-color: #ecf0f1; 
+    padding: 20px; 
+    border-radius: 8px; 
+    width: 260px; 
+    box-shadow: 0 0 20px rgba(0,0,0,0.5); 
+    max-height: 80vh; 
+    overflow-y: auto; 
+    flex-shrink: 0;
+}
+#market-panel h2, #task-panel h2 { 
+    margin-top: 0; 
+    color: #2c3e50; 
+    font-size: 22px; 
+    border-bottom: 2px solid #bdc3c7; 
+    padding-bottom: 10px;
+}
+.market-tip { color: #7f8c8d; font-size: 12px; margin-bottom: 15px; }
+
+/* 任务卡片样式 */
+.task-item { 
+    background-color: #fff; 
+    border-left: 4px solid #f39c12; 
+    padding: 12px; 
+    margin-bottom: 15px; 
+    border-radius: 0 6px 6px 0; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+}
+.task-req { font-weight: bold; margin-bottom: 5px; color: #2c3e50;}
+.task-reward { color: #27ae60; font-weight: bold; margin-bottom: 10px; font-size: 14px;}
+.task-btn { width: 100%; background-color: #2ecc71; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+.task-btn:hover:not(:disabled) { background-color: #27ae60; }
+.task-btn:disabled { background-color: #95a5a6; cursor: not-allowed; }
+
+/* 市场商品卡片样式 */
+.market-item { 
+    background-color: #fff; 
+    padding: 12px; 
+    margin-bottom: 15px; 
+    border-radius: 6px; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+}
+.item-info { font-weight: bold; margin-bottom: 8px; }
+.price-info { font-size: 14px; margin-bottom: 10px; color: #34495e; }
+.price-up { color: #e74c3c; font-weight: bold; }
+.price-down { color: #27ae60; font-weight: bold; }
+.price-normal { color: #34495e; font-weight: normal; }
+.sell-action { display: flex; gap: 8px; }
+.sell-action input { 
+    flex: 1; 
+    width: 50px; 
+    padding: 6px; 
+    border: 1px solid #bdc3c7; 
+    border-radius: 4px; 
+    text-align: center; 
+}
+.sell-btn { 
+    flex: 1; 
+    background-color: #f39c12; 
+    color: white; 
+    border: none; 
+    padding: 8px; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    font-weight: bold; 
+}
+.sell-btn:hover { background-color: #e67e22; }
+.animal-sell-btn { background-color: #d35400; }
+.honey-sell-btn { background-color: #c0392b; }
+>>>>>>> 7aa86a2c4b975efe113d769e609e485e7e037be8
