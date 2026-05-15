@@ -7,15 +7,20 @@
     <link rel="stylesheet" href="assets/vendor/8bitcn/components/ui/8bit/styles/retro.css">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="main-layout">
         <div id="game-container">
             <canvas id="gameCanvas" width="1600" height="900"></canvas>
         </div>
     </div>
+
+    <!-- 游戏配置与状态 -->
     <script src="js/config.js"></script>
     <script src="js/render/world-layout.js"></script>
     <script src="js/state.js"></script>
+
+    <!-- 游戏逻辑 -->
     <script src="js/logic/weather.js"></script>
     <script src="js/logic/audio.js"></script>
     <script src="js/logic/animal.js"></script>
@@ -25,8 +30,13 @@
     <script src="js/logic/miracles.js"></script>
     <script src="js/logic/visitors.js"></script>
     <script src="js/logic/skills.js"></script>
+
+    <!-- 渲染相关 -->
     <script src="js/render/sprite-data.js"></script>
     <script src="js/render/effects.js"></script>
+    <script src="js/render/renderer.js"></script>
+
+    <!-- UI 与输入 -->
     <script src="js/ui/dom-ui.js"></script>
     <script src="js/ui/pixel-assets.js"></script>
     <script src="js/ui/pxlkit-icons.js"></script>
@@ -47,6 +57,16 @@
     <script src="js/render/layout-debug.js"></script>
     <script src="js/render/renderer.js"></script>
     <script src="js/input.js"></script>
+
+    <!-- 游戏入口 -->
     <script src="js/main.js"></script>
+
+    <!-- Cloudflare Web Analytics -->
+    <script
+        defer
+        src="https://static.cloudflareinsights.com/beacon.min.js"
+        data-cf-beacon='{"token": "83a095fa085e49c1ac6ddbd8022c5d2c"}'>
+    </script>
+    <!-- End Cloudflare Web Analytics -->
 </body>
 </html>

@@ -6,7 +6,9 @@
 
 ## 在线游玩
 
-如果本项目已经部署到 GitHub Pages，可以直接打开仓库 Pages 地址游玩。
+本项目已经部署到 GitHub Pages，可以直接打开仓库 Pages 地址游玩：
+
+https://yanny0124.github.io/pixel-farm/
 
 本地游玩也很简单：
 
