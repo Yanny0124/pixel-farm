@@ -188,9 +188,27 @@ canvas {
 }
 
 .bitcn-nav-icon {
+    position: relative;
+    z-index: 2;
+    flex: 0 0 auto;
     width: 32px;
     height: 32px;
+    display: block;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
+    touch-action: auto;
+    user-select: none;
     image-rendering: pixelated;
+}
+
+.bitcn-nav-emoji {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    line-height: 1;
+    image-rendering: auto;
 }
 
 .bitcn-button-label {

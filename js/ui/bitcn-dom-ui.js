@@ -92,7 +92,7 @@
         try { drawCanvasUI = window.drawCanvasUI = noopDrawCanvasUI; } catch (error) { window.drawCanvasUI = noopDrawCanvasUI; }
 
         const domClickGuard = function handleCanvasUIClick() {
-            return !!(window.uiState?.activePanel || window.uiState?.settingsOpen || window.uiState?.activeStoryPopup || window.uiState?.npcArrivalPopup);
+            return !!(window.uiState?.activePanel || window.uiState?.settingsOpen || window.uiState?.activeStoryPopup || window.uiState?.npcArrivalPopup || supportOpen);
         };
         try { handleCanvasUIClick = window.handleCanvasUIClick = domClickGuard; } catch (error) { window.handleCanvasUIClick = domClickGuard; }
 
@@ -138,11 +138,105 @@
     let npcArrivalRenderKey = '';
     const supportGithubUrl = 'https://github.com/Yanny0124/pixel-farm';
 
+    function safeRenderRegion(label, renderFn) {
+        try {
+            renderFn();
+        } catch (error) {
+            console.error(`[Bitcn UI] ${label} render failed`, error);
+        }
+    }
+
+    const NAV_PIXEL_ICONS = {
+        openBook: {
+            palette: { D: '#6e241f', P: '#fff8ea', L: '#d9d2cf', R: '#b75a4a' },
+            grid: [
+                '................',
+                '..D....D........',
+                '..DPPPPDPPPDD...',
+                '.DPPPLLPPPLPD...',
+                '.DPPPLPPPLPPD...',
+                '.DPRRLPPRRLPPD..',
+                '.DPRRLPPRRLPPD..',
+                '.DPPPLPPPLPPD...',
+                '.DPRRLPPRRLPPD..',
+                '.DPPPLPPPLPPD...',
+                '..DPPPDPPPPD....',
+                '..DPPPDPPPD.....',
+                '...DDDDDDD......',
+                '................',
+                '................',
+                '................'
+            ]
+        },
+        sprout: {
+            palette: { D: '#087343', G: '#0f8e52', L: '#28b26d' },
+            grid: [
+                '................',
+                '................',
+                '.....DD..DD.....',
+                '....DGLDDGD.....',
+                '...DGGGLGGD.....',
+                '....DGGGGD......',
+                '......DGD.......',
+                '......DGD.......',
+                '......DGD.......',
+                '.....DGGD.......',
+                '.....DGGD.......',
+                '......DD........',
+                '................',
+                '................',
+                '................',
+                '................'
+            ]
+        },
+        navHammer: {
+            palette: { D: '#7a211c', M: '#d8d5d1', L: '#f2eeee', H: '#8c2d24' },
+            grid: [
+                '................',
+                '....DDDDDD......',
+                '...DMLLLMD......',
+                '...DMLLLMD......',
+                '....DDHDD.......',
+                '......HH........',
+                '......HH........',
+                '......HH........',
+                '.....HH.........',
+                '.....HH.........',
+                '....HH..........',
+                '....HH..........',
+                '...HH...........',
+                '...D............',
+                '................',
+                '................'
+            ]
+        },
+        moneyBag: {
+            palette: { D: '#b36a13', O: '#e09822', L: '#ffd27a', G: '#0f8e52', Y: '#f5c14f' },
+            grid: [
+                '................',
+                '......DDD.......',
+                '.....DODD.......',
+                '....DDOODD......',
+                '.....DOOD.......',
+                '....DDDDD.......',
+                '...DOOOOOD......',
+                '..DOOLGOOOD.....',
+                '..DOOGGGLOD.....',
+                '..DOOOGOOOD.....',
+                '..DOOOGOOOD.....',
+                '...DOOOOOD......',
+                '....DDDDD.......',
+                '................',
+                '................'
+            ]
+        }
+    };
+
     const items = [
-        { id: 'journal', label: '手札', icon: 'book' },
-        { id: 'seeds', label: '种子', icon: 'package' },
-        { id: 'build', label: '建造', icon: 'hammer' },
-        { id: 'market', label: '市场', icon: 'market' }
+        { id: 'journal', label: '手札', icon: 'openBook' },
+        { id: 'seeds', label: '种子', icon: 'sprout' },
+        { id: 'build', label: '建造', icon: 'navHammer' },
+        { id: 'market', label: '市场', icon: 'moneyBag' }
     ];
 
     function makeBorderPieces() {
@@ -164,7 +258,8 @@
     }
 
     function drawIconToCanvas(name, scale = 2) {
-        const icon = window.PIXEL_ICONS?.[name];
+        const iconSource = typeof PIXEL_ICONS !== 'undefined' ? PIXEL_ICONS : window.PIXEL_ICONS;
+        const icon = NAV_PIXEL_ICONS[name] || iconSource?.[name];
         const canvas = document.createElement('canvas');
         canvas.width = 16 * scale;
         canvas.height = 16 * scale;
@@ -180,6 +275,29 @@
         });
         return canvas;
     }
+
+    function createNavIconElement(icon, panelId) {
+        const navEmojiIcons = {
+            journal: '📖',
+            seeds: '🌱',
+            build: '🔨',
+            automation: '⏱️',
+            market: '💰'
+        };
+        const emoji = navEmojiIcons[panelId];
+        if (emoji) {
+            const span = document.createElement('span');
+            span.className = 'bitcn-nav-icon bitcn-nav-emoji';
+            span.setAttribute('aria-hidden', 'true');
+            span.textContent = emoji;
+            return span;
+        }
+        return drawIconToCanvas(icon, 2);
+    }
+    window.BitcnUI = window.BitcnUI || {};
+    window.BitcnUI.drawIconToCanvas = drawIconToCanvas;
+    window.BitcnUI.createNavIconElement = createNavIconElement;
+    window.drawBitcnIconToCanvas = drawIconToCanvas;
 
     function createBitcnButton(label, className, onClick, disabled = false) {
         const button = document.createElement('button');
@@ -240,6 +358,7 @@
                 setNavRenderKey: key => { navRenderKey = key; },
                 createBitcnButton,
                 drawIconToCanvas,
+                createNavIconElement,
                 render
             });
             return;
@@ -259,12 +378,12 @@
         navRenderKey = key;
         nav.innerHTML = '';
         items.forEach(item => {
-            const button = createBitcnButton(item.label, window.uiState?.activePanel === item.id ? 'is-active' : '', () => {
+            const button = createBitcnButton(item.label, `bitcn-nav-button ${window.uiState?.activePanel === item.id ? 'is-active' : ''}`, () => {
                 if (typeof window.togglePanel === 'function') window.togglePanel(item.id);
                 render();
             });
             button.dataset.panel = item.id;
-            button.prepend(drawIconToCanvas(item.icon, 2));
+            button.prepend(createNavIconElement(item.icon, item.id));
             nav.appendChild(button);
         });
     }
@@ -369,6 +488,10 @@
                 render,
                 renderMarketPanel
             });
+            if (force) {
+                const rows = getMarketRows();
+                marketRenderKey = getMarketRenderKey(rows);
+            }
             return;
         }
         renderMarketPanelFallback(force);
@@ -389,7 +512,7 @@
             if (!marketAmounts[id]) marketAmounts[id] = 1;
             marketAmounts[id] = clampAmount(id, marketAmounts[id]);
         });
-        const key = getMarketRenderKey(rows) + `|force:${force ? 1 : 0}`;
+        const key = getMarketRenderKey(rows);
         if (!force && key === marketRenderKey) return;
         marketRenderKey = key;
         marketPanel.innerHTML = '';
@@ -1828,18 +1951,18 @@
     }
 
     function render(force = false) {
-        renderStoryModal(force);
-        renderStatusBar(force);
-        renderNav();
-        renderAppPanel(force);
-        renderMarketPanel(force);
-        renderSettingsPanel(force);
-        renderSideDock();
-        renderOrderDock(force);
-        renderTileTip(force);
-        renderTutorialPanel(force);
-        renderSupportModal(force);
-        renderNpcArrivalModal(force);
+        safeRenderRegion('story modal', () => renderStoryModal(force));
+        safeRenderRegion('status', () => renderStatusBar(force));
+        safeRenderRegion('nav', () => renderNav());
+        safeRenderRegion('app panel', () => renderAppPanel(force));
+        safeRenderRegion('market', () => renderMarketPanel(force));
+        safeRenderRegion('settings', () => renderSettingsPanel(force));
+        safeRenderRegion('side dock', () => renderSideDock());
+        safeRenderRegion('order dock', () => renderOrderDock(force));
+        safeRenderRegion('tile tip', () => renderTileTip(force));
+        safeRenderRegion('tutorial', () => renderTutorialPanel(force));
+        safeRenderRegion('support modal', () => renderSupportModal(force));
+        safeRenderRegion('visitor arrival modal', () => renderNpcArrivalModal(force));
     }
 
     function closeFloatingPanelsFromOutside(event) {

@@ -328,23 +328,15 @@ function applyReferenceFarmLayout() {
 }
 
 function drawCropArea() {
-    drawCropAreaStable();
-    return;
-
-    ctx.save();
-    drawRoundRect(ctx, farmStartX - 14, farmStartY - 54, 286, 34, 9, 'rgba(255, 248, 223, 0.82)', 'rgba(112, 67, 39, 0.55)');
-    ctx.fillStyle = '#4b3a2a';
-    ctx.font = 'bold 20px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('🌱 巨型种植区 16x16', farmStartX + 2, farmStartY - 31);
-    ctx.restore();
+    ctx.fillStyle = '#bdc3c7';
+    ctx.font = 'bold 24px Arial';
+    ctx.fillText('巨型种植区 (16x16)', farmStartX, farmStartY - 25);
     drawCropBaseLayer();
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
             drawCropTileOverlay(r, c);
         }
     }
-    drawFarmPlotDividers();
     drawLargeMatureCrops();
     drawMatureResonanceLinks();
 }
@@ -420,11 +412,11 @@ function buildCropBaseCanvas() {
                 if (cell.state === -1) {
                     ctx.fillStyle = '#ecf0f1';
                     ctx.font = '10px Arial';
-                    ctx.fillText('解锁50币', x + 5, y + 28);
+                    ctx.fillText('50币', x + 5, y + 28);
                 } else {
-                    ctx.strokeStyle = 'rgba(106, 135, 83, 0.34)';
-                    ctx.lineWidth = 1;
-                    ctx.strokeRect(x + 0.5, y + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+                    ctx.strokeStyle = '#81c784';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
                 }
             }
         }
@@ -486,8 +478,17 @@ function drawCropInTile(cell, x, y) {
         } else {
             drawCropSprite(ctx, cell.cropType, stageCount - 1, x, y, TILE_SIZE);
         }
+        const matureInset = 2.5;
+        ctx.save();
         ctx.strokeStyle = '#f1c40f';
-        ctx.strokeRect(x + 3, y + 3, 39, 39);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(
+            x + matureInset,
+            y + matureInset,
+            TILE_SIZE - matureInset * 2,
+            TILE_SIZE - matureInset * 2
+        );
+        ctx.restore();
     }
 }
 
@@ -508,6 +509,8 @@ function drawLargeMatureCrops() {
 }
 
 function drawMatureResonanceLinks() {
+    const maxLinks = 80;
+    let linksDrawn = 0;
     ctx.save();
     ctx.strokeStyle = 'rgba(241, 196, 15, 0.36)';
     ctx.lineWidth = 2;
@@ -523,12 +526,17 @@ function drawMatureResonanceLinks() {
             if (right && right.state === 2 && right.cropType === cell.cropType) {
                 ctx.moveTo(cx, cy);
                 ctx.lineTo(cx + TILE_SIZE, cy);
+                linksDrawn++;
+                if (linksDrawn >= maxLinks) break;
             }
             if (down && down.state === 2 && down.cropType === cell.cropType) {
                 ctx.moveTo(cx, cy);
                 ctx.lineTo(cx, cy + TILE_SIZE);
+                linksDrawn++;
+                if (linksDrawn >= maxLinks) break;
             }
         }
+        if (linksDrawn >= maxLinks) break;
     }
     ctx.stroke();
     ctx.restore();

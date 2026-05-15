@@ -92,6 +92,11 @@ function harvestCell(row, col, allowResonance = true, options = {}) {
     }
 
     let expGained = 0;
+    let harvestedAmount = 0;
+    let harvestedCells = 0;
+    let resonanceEffectsSpawned = 0;
+    const resonanceEffectLimit = resonanceTriggered ? Math.min(24, targets.length) : targets.length;
+    const resonanceEffectStep = resonanceTriggered && resonanceEffectLimit > 0 ? Math.max(1, Math.ceil(targets.length / resonanceEffectLimit)) : 1;
     for (const target of targets) {
         const targetCell = gridData[target.row][target.col];
         if (targetCell.state !== 2 || targetCell.cropType !== cropType) continue;
@@ -108,7 +113,7 @@ function harvestCell(row, col, allowResonance = true, options = {}) {
         if (woodDrop > 0) {
             inventory.wood = (inventory.wood || 0) + woodDrop;
             markCollected('wood', woodDrop);
-            floatingTexts.push({
+            if (!options.quiet) addFloatingText({
                 x: farmStartX + target.col * TILE_SIZE + TILE_SIZE / 2,
                 y: farmStartY + target.row * TILE_SIZE + 6,
                 text: `+${woodDrop}🪵`,
@@ -117,15 +122,29 @@ function harvestCell(row, col, allowResonance = true, options = {}) {
             });
         }
         markCollected(cropType, amount);
+        harvestedAmount += amount;
+        harvestedCells++;
         expGained += config.exp * amount;
         stats.harvests[cropType] = (stats.harvests[cropType] || 0) + amount;
         if (cropType === 'lavender' && isDeepNight()) stats.nightLavenderHarvests = (stats.nightLavenderHarvests || 0) + amount;
-        spawnHarvestEffects(target.row, target.col, config, options);
+        if (!resonanceTriggered || (resonanceEffectsSpawned < resonanceEffectLimit && harvestedCells % resonanceEffectStep === 1)) {
+            spawnHarvestEffects(target.row, target.col, config, resonanceTriggered ? Object.assign({}, options, { bulk: true, particleCount: 2 }) : options);
+            resonanceEffectsSpawned++;
+        }
         targetCell.state = 0;
         targetCell.cropType = null;
         clearLargeCropPlaceholders(target.row, target.col);
     }
 
+    if (resonanceTriggered && harvestedAmount > 0 && !options.quiet) {
+        addFloatingText({
+            x: farmStartX + col * TILE_SIZE + TILE_SIZE / 2,
+            y: farmStartY + row * TILE_SIZE - 4,
+            text: `+${CROP_CONFIG[cropType].icon} x${harvestedAmount}`,
+            life: 105,
+            color: '#f1c40f'
+        });
+    }
     if (expGained > 0) addExp(expGained);
     if (expGained > 0) {
         const discoveredVariant = tryDiscoverVariant(cropType, targets.length);
@@ -135,7 +154,7 @@ function harvestCell(row, col, allowResonance = true, options = {}) {
             recordDiary(`收获 ${CROP_CONFIG[cropType].name} x${targets.length}`);
         }
     }
-    return targets.length;
+    return harvestedCells;
 }
 
 function rollHarvestWoodDrop(cropType, amount) {
@@ -216,9 +235,10 @@ function isDeepNight() {
 function findMatureCluster(row, col, cropType) {
     const visited = new Set();
     const queue = [{ row, col }];
+    let head = 0;
     const cluster = [];
-    while (queue.length > 0) {
-        const node = queue.shift();
+    while (head < queue.length) {
+        const node = queue[head++];
         const key = `${node.row},${node.col}`;
         if (visited.has(key)) continue;
         visited.add(key);

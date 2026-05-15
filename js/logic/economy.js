@@ -306,6 +306,17 @@ function normalizeOrderSlots() {
     if (!orderState || typeof orderState !== 'object') orderState = { nextRefreshAt: 0 };
 }
 
+function fillEmptyOrderSlots() {
+    normalizeOrderSlots();
+    let changed = false;
+    for (let i = 0; i < 3; i++) {
+        if (tasks[i]) continue;
+        tasks[i] = generateTask();
+        changed = true;
+    }
+    return changed;
+}
+
 function getOrderRefreshLeftMs(now = Date.now()) {
     normalizeOrderSlots();
     if (!isFixedOrderRefreshAt(orderState.nextRefreshAt)) orderState.nextRefreshAt = getNextFixedOrderRefreshAt(now);
@@ -332,22 +343,23 @@ function refreshOrderBoard(force = false) {
     if (!isFixedOrderRefreshAt(orderState.nextRefreshAt)) orderState.nextRefreshAt = getNextFixedOrderRefreshAt(now);
     const hasActiveTask = tasks.some(Boolean);
     if (!force && hasActiveTask && now < (orderState.nextRefreshAt || 0)) return false;
-    tasks = [generateTask(), generateTask(), generateTask()];
+    const changed = fillEmptyOrderSlots();
     orderState.nextRefreshAt = getNextFixedOrderRefreshAt(now);
-    return true;
+    return changed;
 }
 
 function initTasks() {
     normalizeOrderSlots();
     if (!isFixedOrderRefreshAt(orderState.nextRefreshAt)) orderState.nextRefreshAt = getNextFixedOrderRefreshAt(Date.now());
-    if (!tasks.some(Boolean)) refreshOrderBoard(true);
+    fillEmptyOrderSlots();
 }
 
 function updateOrderRefresh(now = Date.now()) {
     normalizeOrderSlots();
     if (now >= (orderState.nextRefreshAt || 0)) {
-        refreshOrderBoard(true);
-        saveGame();
+        const changed = fillEmptyOrderSlots();
+        orderState.nextRefreshAt = getNextFixedOrderRefreshAt(now);
+        if (changed) saveGame();
         if (typeof window.refreshBitcnDomUi === 'function') window.refreshBitcnDomUi(true);
     }
 }
@@ -378,8 +390,17 @@ window.deliverTask = function(index) {
 };
 
 window.refreshOrderBoardNow = function() {
+    normalizeOrderSlots();
+    const hasEmptySlot = tasks.some(task => !task);
+    if (!hasEmptySlot) {
+        effectText = '没有空订单位';
+        effectAlpha = 1.0;
+        updateUI();
+        if (typeof window.refreshBitcnDomUi === 'function') window.refreshBitcnDomUi(true);
+        return false;
+    }
     if (!refreshOrderBoard(false)) return false;
-    effectText = '订单看板已刷新';
+    effectText = '订单看板已补充';
     effectAlpha = 1.0;
     updateUI();
     saveGame();
