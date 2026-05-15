@@ -1,6 +1,17 @@
 // ==========================================
 // Logic/Economy: 市场与订单
 // ==========================================
+const ORDER_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+
+function getNextFixedOrderRefreshAt(now = Date.now()) {
+    const interval = ORDER_REFRESH_INTERVAL_MS;
+    return (Math.floor(now / interval) + 1) * interval;
+}
+
+function isFixedOrderRefreshAt(timestamp) {
+    return Number.isFinite(timestamp) && timestamp > 0 && timestamp % ORDER_REFRESH_INTERVAL_MS === 0;
+}
+
 function updateMarket() {
     for (const key in marketState) {
         const config = CROP_CONFIG[key];
@@ -8,16 +19,17 @@ function updateMarket() {
         const base = config.basePrice;
         if (!base) continue;
         const state = marketState[key] || (marketState[key] = { price: base, trend: 0 });
-        const oldPrice = state.price;
         if (!Number.isFinite(state.price) || state.price <= 0) state.price = base;
         if (!Number.isFinite(state.trend)) state.trend = 0;
+        if (!Array.isArray(state.history)) state.history = [state.price];
         state.trend += (Math.random() - 0.5) * 1.5;
         state.trend -= ((state.price - base) / base) * 2.0;
         state.trend = Math.max(-3, Math.min(3, state.trend));
         let newPrice = Math.round(state.price + state.trend + (Math.random() - 0.5));
         newPrice = Math.max(Math.max(1, Math.floor(base * 0.2)), Math.min(Math.ceil(base * 3.0), newPrice));
         state.price = newPrice;
-
+        state.history.push(newPrice);
+        if (state.history.length > 48) state.history.splice(0, state.history.length - 48);
     }
 }
 
@@ -225,6 +237,34 @@ function sellItemAmount(itemId, amount) {
     saveGame();
 }
 
+function getRecipeByOutput(itemId) {
+    return Object.values(RECIPE_CONFIG).find(recipe => recipe.output === itemId);
+}
+
+function getTaskRequirements(task) {
+    if (!task) return [];
+    const sourceItems = Array.isArray(task.items) && task.items.length
+        ? task.items
+        : [{ item: task.item, amount: task.amount }];
+    return sourceItems.map(entry => ({
+        item: entry.item,
+        amount: Math.max(1, Math.floor(Number(entry.amount) || 1))
+    })).filter(entry => CROP_CONFIG[entry.item]);
+}
+
+function isTaskDeliverable(task) {
+    const requirements = getTaskRequirements(task);
+    return requirements.length > 0 && requirements.every(entry => (inventory[entry.item] || 0) >= entry.amount);
+}
+
+function getTaskRequirementLabel(task, includeStock = true) {
+    return getTaskRequirements(task).map(entry => {
+        const config = CROP_CONFIG[entry.item];
+        const stock = inventory[entry.item] || 0;
+        return includeStock ? `${config.icon} ${config.name} ${stock}/${entry.amount}` : `${config.icon} ${config.name} x${entry.amount}`;
+    }).join(' + ');
+}
+
 function generateTask() {
     const orderPool = [
         ...getCropIds(),
@@ -235,43 +275,114 @@ function generateTask() {
         if (!config) return false;
         if (config.noSell || config.basePrice <= 0) return false;
         if (!isCollected(key)) return false;
-        if (RECIPE_CONFIG[key]) return getProcessingBuildingLevel(RECIPE_CONFIG[key].building) > 0 && isCollected(key);
+        const recipe = getRecipeByOutput(key);
+        if (recipe) return getProcessingBuildingLevel(recipe.building) > 0 && isCollected(key);
         if (config.reqLevel && playerLevel + 2 < config.reqLevel) return false;
         return true;
     });
     if (unlockedItems.length === 0) unlockedItems.push('carrot');
-    const item = unlockedItems[Math.floor(Math.random() * unlockedItems.length)];
-    const processed = RECIPE_CONFIG[item];
-    const stock = inventory[item] || 0;
-    const baseAmount = processed ? Math.floor(Math.random() * 3) + 1 : Math.floor(Math.random() * 6) + 3;
-    const amount = Math.max(1, Math.min(baseAmount + Math.floor(playerLevel / 4), Math.max(baseAmount, stock + 6)));
-    const premium = 1.8 + Math.random() * 0.7;
-    const reward = Math.floor(amount * CROP_CONFIG[item].basePrice * premium);
-    return { id: Math.random().toString(36).substr(2, 9), item, amount, reward, exp: Math.floor(reward / 2) };
+    const maxKinds = playerLevel >= 18 ? 3 : playerLevel >= 6 ? 2 : 1;
+    const kindCount = Math.min(maxKinds, unlockedItems.length, 1 + Math.floor(Math.random() * maxKinds));
+    const shuffled = [...unlockedItems].sort(() => Math.random() - 0.5);
+    const items = shuffled.slice(0, kindCount).map(item => {
+        const processed = getRecipeByOutput(item);
+        const stock = inventory[item] || 0;
+        const baseAmount = processed ? Math.floor(Math.random() * 5) + 3 : Math.floor(Math.random() * 11) + 10;
+        const levelBonus = Math.floor(playerLevel / (processed ? 6 : 3));
+        const targetAmount = baseAmount + levelBonus + Math.floor(stock * 0.18);
+        return { item, amount: Math.max(1, Math.min(targetAmount, Math.max(baseAmount + levelBonus, stock + 12))) };
+    });
+    const baseValue = items.reduce((sum, entry) => sum + entry.amount * CROP_CONFIG[entry.item].basePrice, 0);
+    const premium = 3.4 + kindCount * 0.55 + Math.random() * 1.1;
+    const reward = Math.floor(baseValue * premium);
+    const primary = items[0];
+    return { id: Math.random().toString(36).substr(2, 9), item: primary.item, amount: primary.amount, items, reward, exp: Math.floor(reward / 2) };
+}
+
+function normalizeOrderSlots() {
+    if (!Array.isArray(tasks)) tasks = [];
+    tasks = tasks.slice(0, 3);
+    while (tasks.length < 3) tasks.push(null);
+    if (!orderState || typeof orderState !== 'object') orderState = { nextRefreshAt: 0 };
+}
+
+function getOrderRefreshLeftMs(now = Date.now()) {
+    normalizeOrderSlots();
+    if (!isFixedOrderRefreshAt(orderState.nextRefreshAt)) orderState.nextRefreshAt = getNextFixedOrderRefreshAt(now);
+    return Math.max(0, orderState.nextRefreshAt - now);
+}
+
+function formatOrderRefreshTime(ms = getOrderRefreshLeftMs()) {
+    const totalSeconds = Math.ceil(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function getOrderRefreshClockLabel(now = Date.now()) {
+    normalizeOrderSlots();
+    if (!isFixedOrderRefreshAt(orderState.nextRefreshAt)) orderState.nextRefreshAt = getNextFixedOrderRefreshAt(now);
+    const date = new Date(orderState.nextRefreshAt);
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function refreshOrderBoard(force = false) {
+    normalizeOrderSlots();
+    const now = Date.now();
+    if (!isFixedOrderRefreshAt(orderState.nextRefreshAt)) orderState.nextRefreshAt = getNextFixedOrderRefreshAt(now);
+    const hasActiveTask = tasks.some(Boolean);
+    if (!force && hasActiveTask && now < (orderState.nextRefreshAt || 0)) return false;
+    tasks = [generateTask(), generateTask(), generateTask()];
+    orderState.nextRefreshAt = getNextFixedOrderRefreshAt(now);
+    return true;
 }
 
 function initTasks() {
-    while (tasks.length < 3) tasks.push(generateTask());
+    normalizeOrderSlots();
+    if (!isFixedOrderRefreshAt(orderState.nextRefreshAt)) orderState.nextRefreshAt = getNextFixedOrderRefreshAt(Date.now());
+    if (!tasks.some(Boolean)) refreshOrderBoard(true);
+}
+
+function updateOrderRefresh(now = Date.now()) {
+    normalizeOrderSlots();
+    if (now >= (orderState.nextRefreshAt || 0)) {
+        refreshOrderBoard(true);
+        saveGame();
+        if (typeof window.refreshBitcnDomUi === 'function') window.refreshBitcnDomUi(true);
+    }
 }
 
 window.deliverTask = function(index) {
     const task = tasks[index];
-    if (!task || !CROP_CONFIG[task.item]) {
-        tasks[index] = generateTask();
+    const requirements = getTaskRequirements(task);
+    if (!task || !requirements.length) {
+        tasks[index] = null;
         saveGame();
         return;
     }
-    if (inventory[task.item] >= task.amount) {
-        inventory[task.item] -= task.amount;
+    if (isTaskDeliverable(task)) {
+        requirements.forEach(entry => {
+            inventory[entry.item] -= entry.amount;
+        });
         coins += task.reward;
-        effectText = `✅ 完成订单！赚取 ${task.reward} 币！`;
+        effectText = `✅ 完成订单！赚取 ${typeof formatCoins === 'function' ? formatCoins(task.reward) : `${task.reward}币`}！`;
         effectAlpha = 1.0;
         playSound('order');
         stats.ordersCompleted = (stats.ordersCompleted || 0) + 1;
-        recordDiary(`完成订单：${CROP_CONFIG[task.item].name} x${task.amount}，收入 ${task.reward}币`);
+        recordDiary(`完成订单：${getTaskRequirementLabel(task, false)}，收入 ${typeof formatCoins === 'function' ? formatCoins(task.reward) : `${task.reward}币`}`);
         addExp(task.exp);
-        tasks[index] = generateTask();
+        tasks[index] = null;
         updateUI();
         saveGame();
     }
+};
+
+window.refreshOrderBoardNow = function() {
+    if (!refreshOrderBoard(false)) return false;
+    effectText = '订单看板已刷新';
+    effectAlpha = 1.0;
+    updateUI();
+    saveGame();
+    if (typeof window.refreshBitcnDomUi === 'function') window.refreshBitcnDomUi(true);
+    return true;
 };

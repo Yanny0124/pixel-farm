@@ -3,23 +3,39 @@
 // ==========================================
 let lastLogicAt = Date.now();
 let lastNarrativeCheckAt = 0;
+let lastSlowLogicAt = 0;
+let lastSkillButtonRefreshAt = 0;
+let visitorDeltaSeconds = 0;
+const SLOW_LOGIC_INTERVAL_MS = 250;
+const SKILL_BUTTON_REFRESH_MS = 250;
 
 function updateLogic() {
     const now = Date.now();
     const deltaSeconds = Math.min(5, Math.max(0, (now - lastLogicAt) / 1000));
     lastLogicAt = now;
     stats.totalPlaySeconds = (stats.totalPlaySeconds || 0) + deltaSeconds;
+    visitorDeltaSeconds += deltaSeconds;
     if (now - lastNarrativeCheckAt > 30000) {
         lastNarrativeCheckAt = now;
         checkStoryUnlocks(false);
     }
-    updateWeather(now);
-    updateCrops(now);
+    if (now - lastSlowLogicAt >= SLOW_LOGIC_INTERVAL_MS) {
+        lastSlowLogicAt = now;
+        updateWeather(now);
+        updateCrops(now);
+        updateProcessing(now);
+        if (typeof updateOrderRefresh === 'function') updateOrderRefresh(now);
+    }
     updateAnimals(now);
-    updateProcessing(now);
-    updateVisitorArrivals(deltaSeconds);
+    if (visitorDeltaSeconds >= 1) {
+        updateVisitorArrivals(visitorDeltaSeconds);
+        visitorDeltaSeconds = 0;
+    }
     updateWorkers(now);
-    updateSkillButtons(now);
+    if (!window.__bitcnDomMode && now - lastSkillButtonRefreshAt >= SKILL_BUTTON_REFRESH_MS) {
+        lastSkillButtonRefreshAt = now;
+        updateSkillButtons(now);
+    }
     updateEffects();
 }
 

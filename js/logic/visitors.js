@@ -10,6 +10,45 @@ function ensureVisitorState(id) {
     return visitorState[id];
 }
 
+function ensureAffectionState(id) {
+    if (!affectionState[id]) affectionState[id] = { value: 0, level: 0 };
+    affectionState[id].value = Math.max(0, Math.floor(Number(affectionState[id].value) || 0));
+    affectionState[id].level = Math.max(0, Math.floor(Number(affectionState[id].level) || 0));
+    return affectionState[id];
+}
+
+function getVisitorAffection(id) {
+    const state = ensureAffectionState(id);
+    const nextLevelAt = 100 + state.level * 50;
+    return {
+        value: state.value,
+        level: state.level,
+        nextLevelAt,
+        percent: Math.min(100, Math.floor((state.value / nextLevelAt) * 100))
+    };
+}
+
+function addVisitorAffection(id, amount) {
+    const state = ensureAffectionState(id);
+    state.value += Math.max(0, Math.floor(Number(amount) || 0));
+    let nextLevelAt = 100 + state.level * 50;
+    while (state.value >= nextLevelAt) {
+        state.value -= nextLevelAt;
+        state.level++;
+        nextLevelAt = 100 + state.level * 50;
+    }
+    return getVisitorAffection(id);
+}
+
+function queueVisitorArrivalPopup(id) {
+    const config = VISITOR_CONFIG[id];
+    if (!config || !window.uiState) return;
+    window.uiState.npcArrivalPopup = {
+        id,
+        line: config.arrivalLine || config.chain?.[0]?.text || config.unlockHint || ''
+    };
+}
+
 function getVisitorIds() {
     return Object.keys(VISITOR_CONFIG);
 }
@@ -21,6 +60,7 @@ function isVisitorUnlocked(id) {
     if (state.arrived || state.resident) return true;
     if (config.unlock()) {
         state.arrived = true;
+        queueVisitorArrivalPopup(id);
         return true;
     }
     return false;
@@ -51,6 +91,7 @@ function arriveVisitor(id, reason = '') {
     if (config) {
         effectText = `${config.icon} ${config.name} 到访了农场`;
         effectAlpha = 1.0;
+        queueVisitorArrivalPopup(id);
         recordDiary(`${config.name}到访农场${reason ? `：${reason}` : ''}`, true);
         playSound('talk');
     }
@@ -148,6 +189,7 @@ window.deliverVisitorTask = function(id) {
     progress.state.step++;
     const becameResident = progress.state.step >= config.chain.length;
     if (becameResident) progress.state.resident = true;
+    addVisitorAffection(id, becameResident ? 35 : 18);
     effectText = becameResident ? `${config.icon} ${config.name} 入驻农场！` : `${config.icon} 完成访客委托：${task.title}`;
     effectAlpha = 1.0;
     playSound(becameResident ? 'miracle' : 'order');
@@ -182,6 +224,7 @@ window.talkVisitor = function(id) {
     effectText = `${config.icon} ${config.name}：${getVisitorTalkLine(id)}`;
     effectAlpha = 1.0;
     stats.visitorTalks = (stats.visitorTalks || 0) + 1;
+    addVisitorAffection(id, progress.finished ? 4 : 2);
     if (id === 'leo' && progress.finished) stats.leoRandomTalks = (stats.leoRandomTalks || 0) + 1;
     checkStoryUnlocks(false);
     checkSeedUnlocks(false);

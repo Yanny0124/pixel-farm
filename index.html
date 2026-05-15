@@ -6,15 +6,11 @@
     <title>Tiny Pixel Farm</title>
     <link rel="stylesheet" href="assets/vendor/8bitcn/components/ui/8bit/styles/retro.css">
     <link rel="stylesheet" href="style.css">
-    <!-- Cloudflare Web Analytics -->
-    <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"83a095fa085e49c1ac6ddbd8022c5d2c"}'></script>
-    <!-- End Cloudflare Web Analytics -->
 </head>
 <body>
     <div class="main-layout">
         <div id="game-container">
             <canvas id="gameCanvas" width="1600" height="900"></canvas>
-            <div id="react-ui-root" aria-live="polite"></div>
         </div>
     </div>
     <script src="js/config.js"></script>
@@ -34,12 +30,21 @@
     <script src="js/ui/pixel-assets.js"></script>
     <script src="js/ui/pxlkit-icons.js"></script>
     <script src="js/ui/canvas-ui.js"></script>
+    <script src="js/ui/bitcn-market-chart.js"></script>
+    <script src="js/ui/panels/settings-panel.js"></script>
+    <script src="js/ui/panels/support-modal.js"></script>
+    <script src="js/ui/panels/tutorial-panel.js"></script>
+    <script src="js/ui/panels/nav-panel.js"></script>
+    <script src="js/ui/panels/status-panel.js"></script>
+    <script src="js/ui/panels/orders-panel.js"></script>
+    <script src="js/ui/panels/build-panel.js"></script>
+    <script src="js/ui/panels/market-panel.js"></script>
+    <script src="js/ui/panels/journal-panel.js"></script>
+    <script src="js/ui/panels/story-modal.js"></script>
+    <script src="js/ui/panels/visitor-panel.js"></script>
     <script src="js/ui/bitcn-dom-ui.js"></script>
     <script src="js/render/renderer.js"></script>
     <script src="js/input.js"></script>
     <script src="js/main.js"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="js/ui/react-overlay.js"></script>
 </body>
 </html>

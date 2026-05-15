@@ -130,8 +130,10 @@ function harvestCell(row, col, allowResonance = true, options = {}) {
     if (expGained > 0) {
         const discoveredVariant = tryDiscoverVariant(cropType, targets.length);
         applyHarvestShake(cropType, { resonanceTriggered, discoveredVariant, options });
-        playSound(targets.length > 1 ? 'resonance' : 'harvest');
-        recordDiary(`收获 ${CROP_CONFIG[cropType].name} x${targets.length}`);
+        if (!options.quiet) {
+            playSound(targets.length > 1 ? 'resonance' : 'harvest');
+            recordDiary(`收获 ${CROP_CONFIG[cropType].name} x${targets.length}`);
+        }
     }
     return targets.length;
 }

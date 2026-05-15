@@ -73,7 +73,7 @@ function getAnimalBuildingBonus(type) {
     return getRanchBuildingLevel(buildingId) * config.bonusPerLevel;
 }
 
-function getAnimalProduceTime(type, animal = null) {
+function getAnimalProduceTime(type, animal = null, now = Date.now()) {
     let pTime = 10000;
     if (type === 'sheep') pTime = 12000;
     if (type === 'cow') pTime = 15000;
@@ -83,7 +83,7 @@ function getAnimalProduceTime(type, animal = null) {
         pTime *= 1 - Math.min(0.4, getTalentLevel('husbandry') * 0.1);
     }
     pTime *= 1 - Math.min(0.35, getAnimalBuildingBonus(type));
-    if (animal && animal.feedUntil && animal.feedUntil > Date.now()) pTime *= 0.8;
+    if (animal && animal.feedUntil && animal.feedUntil > now) pTime *= 0.8;
     if (miracleBonuses.barn) pTime *= 0.9;
     return pTime;
 }
@@ -147,24 +147,14 @@ window.upgradeRanchBuilding = function(id) {
 
 function updateAnimals(now) {
     for (const animal of animals) {
-        animal.x += animal.vx;
-        animal.y += animal.vy;
-        if (Math.random() < 0.02) {
-            animal.vx = (Math.random() - 0.5) * (animal.type === 'bee' ? 4 : 1.5);
-            animal.vy = (Math.random() - 0.5) * (animal.type === 'bee' ? 4 : 1.5);
-        }
-
         if (['chicken', 'sheep', 'cow', 'pig'].includes(animal.type)) {
-            if (animal.x < ranchStartX + 5) animal.vx = Math.abs(animal.vx) + 1;
-            if (animal.x > ranchStartX + ranchWidth - 5) animal.vx = -Math.abs(animal.vx);
-            if (animal.y < ranchStartY + 5) animal.vy = Math.abs(animal.vy);
-            if (animal.y > ranchStartY + ranchHeight - 5) animal.vy = -Math.abs(animal.vy);
+            updateRanchAnimalPath(animal, now);
         } else if (animal.type === 'bee') {
-            updateBee(animal);
+            updateBee(animal, now);
         }
 
         tryFeedAnimal(animal, now);
-        const pTime = getAnimalProduceTime(animal.type, animal);
+        const pTime = getAnimalProduceTime(animal.type, animal, now);
         const pType = getAnimalProductType(animal.type);
         if (now - animal.timer > pTime) {
             const produced = Math.floor((now - animal.timer) / pTime);
@@ -177,11 +167,55 @@ function updateAnimals(now) {
     }
 }
 
-function updateBee(animal) {
-    if (animal.x < farmStartX + 5) animal.vx = Math.abs(animal.vx) + 1;
-    if (animal.x > farmStartX + gridWidth - 5) animal.vx = -Math.abs(animal.vx);
-    if (animal.y < farmStartY + 5) animal.vy = Math.abs(animal.vy);
-    if (animal.y > farmStartY + gridHeight - 5) animal.vy = -Math.abs(animal.vy);
+function updateRanchAnimalPath(animal, now) {
+    if (!animal.target || now > (animal.targetUntil || 0) || Math.hypot((animal.target.x || animal.x) - animal.x, (animal.target.y || animal.y) - animal.y) < 8) {
+        animal.target = {
+            x: ranchStartX + 18 + Math.random() * Math.max(1, ranchWidth - 36),
+            y: ranchStartY + 18 + Math.random() * Math.max(1, ranchHeight - 36)
+        };
+        animal.targetUntil = now + 4500 + Math.random() * 5000;
+    }
+    steerAnimal(animal, animal.target.x, animal.target.y, animal.type === 'chicken' ? 0.72 : 0.56);
+    animal.x = Math.max(ranchStartX + 8, Math.min(ranchStartX + ranchWidth - 8, animal.x));
+    animal.y = Math.max(ranchStartY + 8, Math.min(ranchStartY + ranchHeight - 8, animal.y));
+}
+
+function steerAnimal(animal, targetX, targetY, speed) {
+    const dx = targetX - animal.x;
+    const dy = targetY - animal.y;
+    const distance = Math.max(1, Math.hypot(dx, dy));
+    animal.vx = Number.isFinite(animal.vx) ? animal.vx : 0;
+    animal.vy = Number.isFinite(animal.vy) ? animal.vy : 0;
+    if (distance <= speed + 0.35) {
+        animal.x = targetX;
+        animal.y = targetY;
+        animal.vx *= 0.35;
+        animal.vy *= 0.35;
+        return;
+    }
+    const ease = animal.type === 'bee' ? 0.14 : 0.12;
+    animal.vx = animal.vx * (1 - ease) + (dx / distance) * speed * ease;
+    animal.vy = animal.vy * (1 - ease) + (dy / distance) * speed * ease;
+    const velocity = Math.hypot(animal.vx, animal.vy);
+    if (velocity > speed) {
+        animal.vx = (animal.vx / velocity) * speed;
+        animal.vy = (animal.vy / velocity) * speed;
+    }
+    animal.x += animal.vx;
+    animal.y += animal.vy;
+}
+
+function updateBee(animal, now) {
+    if (!animal.target || now > (animal.targetUntil || 0) || Math.hypot((animal.target.x || animal.x) - animal.x, (animal.target.y || animal.y) - animal.y) < 12) {
+        animal.target = {
+            x: farmStartX + 18 + Math.random() * Math.max(1, gridWidth - 36),
+            y: farmStartY + 18 + Math.random() * Math.max(1, gridHeight - 36)
+        };
+        animal.targetUntil = now + 2600 + Math.random() * 2400;
+    }
+    steerAnimal(animal, animal.target.x, animal.target.y, 1.25);
+    animal.x = Math.max(farmStartX + 8, Math.min(farmStartX + gridWidth - 8, animal.x));
+    animal.y = Math.max(farmStartY + 8, Math.min(farmStartY + gridHeight - 8, animal.y));
 
     const beeCol = Math.floor((animal.x - farmStartX) / TILE_SIZE);
     const beeRow = Math.floor((animal.y - farmStartY) / TILE_SIZE);

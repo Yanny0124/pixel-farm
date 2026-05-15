@@ -7,6 +7,7 @@ let lastMouseY = 0;
 let isSpacebarDown = false;
 let touchState = null;
 let touchInfoTimer = null;
+const ANIMAL_TOOL_IDS = ['chicken', 'sheep', 'cow', 'bee', 'pig'];
 
 function bindInput() {
     window.addEventListener('keydown', (e) => {
@@ -27,6 +28,9 @@ function bindInput() {
         }
     });
     canvas.addEventListener('contextmenu', e => e.preventDefault());
+    canvas.addEventListener('auxclick', e => {
+        if (e.button === 1) e.preventDefault();
+    });
     canvas.addEventListener('mousedown', handleCanvasMouseDown);
     canvas.addEventListener('wheel', handleCanvasWheel, { passive: false });
     canvas.addEventListener('touchstart', handleCanvasTouchStart, { passive: false });
@@ -39,10 +43,47 @@ function bindInput() {
 window.selectTool = function(toolId) {
     if (CROP_CONFIG[toolId] && !isItemUnlocked(toolId)) return;
     currentSelectedTool = toolId;
+    if (isSeedTool(toolId) && typeof uiPreferences !== 'undefined') {
+        uiPreferences.lastSeedTool = toolId;
+        if (typeof saveGame === 'function') saveGame();
+    }
 };
+
+function isAnimalTool(toolId) {
+    return ANIMAL_TOOL_IDS.includes(toolId);
+}
+
+function isSeedTool(toolId) {
+    return CROP_CONFIG[toolId]?.seedPrice !== undefined;
+}
+
+function isFarmArea(worldX, worldY) {
+    return worldX >= farmStartX && worldX <= farmStartX + gridWidth && worldY >= farmStartY && worldY <= farmStartY + gridHeight;
+}
+
+function getLastSeedTool() {
+    const saved = typeof uiPreferences !== 'undefined' ? uiPreferences.lastSeedTool : null;
+    if (saved && isSeedTool(saved) && isItemUnlocked(saved)) return saved;
+    if (isSeedTool(currentSelectedTool) && isItemUnlocked(currentSelectedTool)) return currentSelectedTool;
+    return 'carrot';
+}
+
+function switchBackToLastSeedTool() {
+    const seedTool = getLastSeedTool();
+    currentSelectedTool = seedTool;
+    if (typeof uiPreferences !== 'undefined') uiPreferences.lastSeedTool = seedTool;
+    effectText = `已切回 ${CROP_CONFIG[seedTool]?.name || '种子'}`;
+    effectAlpha = 1.0;
+}
 
 window.hireWorker = function(type) {
     const cost = type === 'human' ? 600 : 1800;
+    const currentCount = (workers || []).filter(worker => worker.type === type).length;
+    const limit = WORKER_LIMITS[type] ?? Infinity;
+    if (currentCount >= limit) {
+        alert(type === 'drone' ? '无人机目前只能部署 1 台，可以通过升级强化。' : '员工最多雇佣 5 名。');
+        return;
+    }
     if (type === 'drone' && playerLevel < 5 && getTalentLevel('industry') < 4) {
         alert('无人机需要 Lv.5 或工业领袖 L4。');
         return;
@@ -74,19 +115,21 @@ window.dismissWorker = function(type) {
 function handleCanvasMouseDown(e) {
     const screen = getCanvasMouse(e);
     setCanvasUIMouse(screen.x, screen.y);
+
+    if (isSpacebarDown || e.button === 1) {
+        e.preventDefault();
+        isDraggingCamera = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        canvas.style.cursor = 'grabbing';
+        return;
+    }
+
     if (handleCanvasUIClick(screen.x, screen.y)) return;
     const pos = getWorldMouse(e);
 
     if (e.button === 2) {
         showTileInfo(screen.x, screen.y, pos.worldX, pos.worldY);
-        return;
-    }
-
-    if (isSpacebarDown || e.button === 1) {
-        isDraggingCamera = true;
-        lastMouseX = e.clientX;
-        lastMouseY = e.clientY;
-        canvas.style.cursor = 'grabbing';
         return;
     }
 
@@ -96,7 +139,12 @@ function handleCanvasMouseDown(e) {
         return;
     }
 
-    if (['chicken', 'sheep', 'cow', 'bee', 'pig'].includes(currentSelectedTool)) {
+    if (isAnimalTool(currentSelectedTool)) {
+        if (currentSelectedTool !== 'bee' && isFarmArea(pos.worldX, pos.worldY)) {
+            switchBackToLastSeedTool();
+            interactWithFarm(pos.worldX, pos.worldY);
+            return;
+        }
         placeAnimal(pos.worldX, pos.worldY);
         return;
     }
@@ -359,7 +407,12 @@ function handleCanvasTouchEnd(e) {
             const visitorId = getVisitorIconAtWorld(touchState.world.x, touchState.world.y);
             if (visitorId) {
                 openVisitorJournal(visitorId);
-            } else if (['chicken', 'sheep', 'cow', 'bee', 'pig'].includes(currentSelectedTool)) {
+            } else if (isAnimalTool(currentSelectedTool)) {
+                if (currentSelectedTool !== 'bee' && isFarmArea(touchState.world.x, touchState.world.y)) {
+                    switchBackToLastSeedTool();
+                    interactWithFarm(touchState.world.x, touchState.world.y);
+                    return;
+                }
                 placeAnimal(touchState.world.x, touchState.world.y);
             } else {
                 interactWithFarm(touchState.world.x, touchState.world.y);

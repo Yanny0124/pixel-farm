@@ -1,14 +1,14 @@
 // ==========================================
 // 地图与物理常量
 // ==========================================
-const TILE_SIZE = 45; 
+const TILE_SIZE = 34; 
 const ROWS = 16; const COLS = 16;
 
-const farmStartX = 100; const farmStartY = 150;
+const farmStartX = 170; const farmStartY = 150;
 const gridWidth = COLS * TILE_SIZE; const gridHeight = ROWS * TILE_SIZE; 
 
-const ranchStartX = farmStartX + gridWidth + 200; const ranchStartY = 150;
-const ranchWidth = 600; const ranchHeight = 600;
+const ranchStartX = farmStartX + gridWidth + 150; const ranchStartY = 150;
+const ranchWidth = 520; const ranchHeight = 520;
 
 const crossroadX = farmStartX + gridWidth + 100; 
 const crossroadY = farmStartY + gridHeight / 2;
@@ -19,6 +19,19 @@ const WEATHER_CHANGE_INTERVAL = 60 * 60 * 1000;
 const RAIN_SKILL_DURATION = 15 * 60 * 1000;
 const RAIN_SKILL_BASE_CD = 2 * 60 * 60 * 1000;
 const CROP_GROW_TIME_SCALE = 0.05;
+
+const WORKER_LIMITS = { human: 5, drone: 1 };
+const DRONE_UPGRADE_CONFIG = {
+    speed: { name: '巡航引擎', maxLevel: 5, baseCost: 900, costStep: 650, bonusPerLevel: 0.35 },
+    efficiency: { name: '作业模块', maxLevel: 5, baseCost: 1100, costStep: 800, cooldownReduction: 24 },
+    cargo: { name: '收纳挂架', maxLevel: 3, baseCost: 1400, costStep: 1000, offlinePower: 8 }
+};
+const FARM_PLOTS = [
+    { id: 'northWest', name: '西北田', row: 0, col: 0, rows: 8, cols: 8, color: 'rgba(107, 142, 83, 0.50)' },
+    { id: 'northEast', name: '东北田', row: 0, col: 8, rows: 8, cols: 8, color: 'rgba(84, 126, 152, 0.46)' },
+    { id: 'southWest', name: '西南田', row: 8, col: 0, rows: 8, cols: 8, color: 'rgba(173, 124, 57, 0.44)' },
+    { id: 'southEast', name: '东南田', row: 8, col: 8, rows: 8, cols: 8, color: 'rgba(142, 94, 132, 0.42)' }
+];
 
 // ==========================================
 // 游戏配置字典 (核心数值策划都在这里)
@@ -116,7 +129,7 @@ const RANCH_BUILDING_CONFIG = {
         maxLevel: 4,
         capacityPerLevel: 4,
         bonusPerLevel: 0.08,
-        x: ranchStartX + 44,
+        x: ranchStartX + 34,
         y: ranchStartY + 44,
         w: 128,
         h: 92,
@@ -132,7 +145,7 @@ const RANCH_BUILDING_CONFIG = {
         maxLevel: 4,
         capacityPerLevel: 4,
         bonusPerLevel: 0.08,
-        x: ranchStartX + 218,
+        x: ranchStartX + 192,
         y: ranchStartY + 44,
         w: 132,
         h: 92,
@@ -148,7 +161,7 @@ const RANCH_BUILDING_CONFIG = {
         maxLevel: 4,
         capacityPerLevel: 3,
         bonusPerLevel: 0.09,
-        x: ranchStartX + 396,
+        x: ranchStartX + 348,
         y: ranchStartY + 44,
         w: 142,
         h: 96,
@@ -164,8 +177,8 @@ const RANCH_BUILDING_CONFIG = {
         maxLevel: 3,
         capacityPerLevel: 3,
         bonusPerLevel: 0.1,
-        x: ranchStartX + 60,
-        y: ranchStartY + 430,
+        x: ranchStartX + 56,
+        y: ranchStartY + 352,
         w: 110,
         h: 82,
         color: '#f1c40f'
@@ -180,8 +193,8 @@ const RANCH_BUILDING_CONFIG = {
         maxLevel: 3,
         capacityPerLevel: 3,
         bonusPerLevel: 0.1,
-        x: ranchStartX + 394,
-        y: ranchStartY + 414,
+        x: ranchStartX + 342,
+        y: ranchStartY + 344,
         w: 132,
         h: 92,
         color: '#f5b7c8'
@@ -199,10 +212,10 @@ const PROCESSING_BUILDING_CONFIG = {
         maxLevel: 4,
         speedBonusPerLevel: 0.08,
         recipes: ['flour', 'popcorn', 'sugar'],
-        x: crossroadX - 70,
-        y: farmStartY + 70,
-        w: 116,
-        h: 104,
+        x: farmStartX + 58,
+        y: farmStartY + gridHeight + 46,
+        w: 172,
+        h: 132,
         color: '#d8b26e'
     },
     ketchupFactory: {
@@ -215,10 +228,10 @@ const PROCESSING_BUILDING_CONFIG = {
         maxLevel: 4,
         speedBonusPerLevel: 0.08,
         recipes: ['ketchup', 'fries', 'sunflowerSeed', 'sunflowerOil', 'cloth'],
-        x: crossroadX - 72,
-        y: farmStartY + 214,
-        w: 122,
-        h: 106,
+        x: farmStartX + 286,
+        y: farmStartY + gridHeight + 46,
+        w: 172,
+        h: 132,
         color: '#d76a62'
     },
     bakery: {
@@ -231,10 +244,10 @@ const PROCESSING_BUILDING_CONFIG = {
         maxLevel: 4,
         speedBonusPerLevel: 0.08,
         recipes: ['bread', 'pumpkinPie'],
-        x: crossroadX - 72,
-        y: farmStartY + 360,
-        w: 122,
-        h: 104,
+        x: farmStartX + 514,
+        y: farmStartY + gridHeight + 46,
+        w: 172,
+        h: 132,
         color: '#e9c46a'
     },
     dairy: {
@@ -247,10 +260,10 @@ const PROCESSING_BUILDING_CONFIG = {
         maxLevel: 4,
         speedBonusPerLevel: 0.08,
         recipes: ['cheese'],
-        x: crossroadX - 72,
-        y: farmStartY + 506,
-        w: 122,
-        h: 104,
+        x: farmStartX + 742,
+        y: farmStartY + gridHeight + 46,
+        w: 172,
+        h: 132,
         color: '#f4d35e'
     }
 };
@@ -555,6 +568,7 @@ const STORY_LETTERS = [
 
 const VISITOR_CONFIG = {
     leo: {
+        portrait: 'assets/npc/leo.png',
         name: '雷欧',
         icon: '👨‍🍳',
         role: '流浪厨师',
@@ -571,6 +585,7 @@ const VISITOR_CONFIG = {
         ]
     },
     lia: {
+        portrait: 'assets/npc/lia.png',
         name: '莉亚',
         icon: '👩‍🔬',
         role: '植物学家',
@@ -586,6 +601,7 @@ const VISITOR_CONFIG = {
         ]
     },
     bruno: {
+        portrait: 'assets/npc/bruno.png',
         name: '布鲁诺',
         icon: '👷',
         role: '建筑匠人',
@@ -600,6 +616,7 @@ const VISITOR_CONFIG = {
         ]
     },
     amir: {
+        portrait: 'assets/npc/amir.png',
         name: '阿米尔',
         icon: '🧳',
         role: '旅行商人',
