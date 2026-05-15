@@ -19,8 +19,8 @@ function addFloatingText(text) {
 
 function spawnHarvestEffects(row, col, config, options = {}) {
     if (options.quiet) return;
-    const x = farmStartX + col * TILE_SIZE + TILE_SIZE / 2;
-    const y = farmStartY + row * TILE_SIZE + TILE_SIZE / 2;
+    const x = (typeof getFarmTileWorldX === 'function' ? getFarmTileWorldX(col) : farmStartX + col * TILE_SIZE) + TILE_SIZE / 2;
+    const y = (typeof getFarmTileWorldY === 'function' ? getFarmTileWorldY(row) : farmStartY + row * TILE_SIZE) + TILE_SIZE / 2;
     const defaultCount = options.bulk ? 2 : 10;
     const particleCount = Math.max(0, Math.min(10, Number.isFinite(options.particleCount) ? options.particleCount : defaultCount));
     for (let i = 0; i < particleCount; i++) {
@@ -118,8 +118,8 @@ function drawResonanceBursts(ctx) {
         ctx.lineWidth = 3;
         ctx.beginPath();
         for (const cell of burst.cells) {
-            const cx = farmStartX + cell.col * TILE_SIZE + TILE_SIZE / 2;
-            const cy = farmStartY + cell.row * TILE_SIZE + TILE_SIZE / 2;
+            const cx = (typeof getFarmTileWorldX === 'function' ? getFarmTileWorldX(cell.col) : farmStartX + cell.col * TILE_SIZE) + TILE_SIZE / 2;
+            const cy = (typeof getFarmTileWorldY === 'function' ? getFarmTileWorldY(cell.row) : farmStartY + cell.row * TILE_SIZE) + TILE_SIZE / 2;
             ctx.moveTo(cx - 10, cy);
             ctx.lineTo(cx + 10, cy);
             ctx.moveTo(cx, cy - 10);

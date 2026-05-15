@@ -57,7 +57,17 @@ function findCellPosition(targetCell) {
 function canReserveLargeCrop(row, col) {
     if (row === null || col === null || row === undefined || col === undefined) return false;
     if (row >= ROWS - 1 || col >= COLS - 1) return false;
+    if (!isLargeCropWithinFarmPlot(row, col)) return false;
     return [[0, 0], [0, 1], [1, 0], [1, 1]].every(([dr, dc]) => gridData[row + dr]?.[col + dc]?.state === 0);
+}
+
+function isLargeCropWithinFarmPlot(row, col) {
+    const plotSize = typeof FARM_PLOT_SIZE !== 'undefined' ? FARM_PLOT_SIZE : Math.floor(COLS / 2);
+    const startPlotCol = Math.floor(col / plotSize);
+    const endPlotCol = Math.floor((col + 1) / plotSize);
+    const startPlotRow = Math.floor(row / plotSize);
+    const endPlotRow = Math.floor((row + 1) / plotSize);
+    return startPlotCol === endPlotCol && startPlotRow === endPlotRow;
 }
 
 function reserveLargeCrop(row, col, cropType, now) {
@@ -114,8 +124,8 @@ function harvestCell(row, col, allowResonance = true, options = {}) {
             inventory.wood = (inventory.wood || 0) + woodDrop;
             markCollected('wood', woodDrop);
             if (!options.quiet) addFloatingText({
-                x: farmStartX + target.col * TILE_SIZE + TILE_SIZE / 2,
-                y: farmStartY + target.row * TILE_SIZE + 6,
+                x: (typeof getFarmTileWorldX === 'function' ? getFarmTileWorldX(target.col) : farmStartX + target.col * TILE_SIZE) + TILE_SIZE / 2,
+                y: (typeof getFarmTileWorldY === 'function' ? getFarmTileWorldY(target.row) : farmStartY + target.row * TILE_SIZE) + 6,
                 text: `+${woodDrop}🪵`,
                 life: 90,
                 color: '#8d6e63'
@@ -138,8 +148,8 @@ function harvestCell(row, col, allowResonance = true, options = {}) {
 
     if (resonanceTriggered && harvestedAmount > 0 && !options.quiet) {
         addFloatingText({
-            x: farmStartX + col * TILE_SIZE + TILE_SIZE / 2,
-            y: farmStartY + row * TILE_SIZE - 4,
+            x: (typeof getFarmTileWorldX === 'function' ? getFarmTileWorldX(col) : farmStartX + col * TILE_SIZE) + TILE_SIZE / 2,
+            y: (typeof getFarmTileWorldY === 'function' ? getFarmTileWorldY(row) : farmStartY + row * TILE_SIZE) - 4,
             text: `+${CROP_CONFIG[cropType].icon} x${harvestedAmount}`,
             life: 105,
             color: '#f1c40f'

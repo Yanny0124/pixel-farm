@@ -12,9 +12,10 @@ function updateWorkers(now) {
         const actionCD = worker.type === 'drone' ? getDroneActionCooldown() : 1000;
         if (now - worker.actionTimer <= actionCD) continue;
         const useTargetCell = worker.target && worker.target.row !== undefined && worker.target.col !== undefined && Math.hypot((worker.target.x || worker.x) - worker.x, (worker.target.y || worker.y) - worker.y) <= 10;
-        const col = useTargetCell ? worker.target.col : Math.floor((worker.x - farmStartX) / TILE_SIZE);
-        const row = useTargetCell ? worker.target.row : Math.floor((worker.y - farmStartY) / TILE_SIZE);
-        if (row < 0 || row >= ROWS || col < 0 || col >= COLS) continue;
+        const currentCell = useTargetCell ? worker.target : (typeof getFarmCellAtWorld === 'function' ? getFarmCellAtWorld(worker.x, worker.y) : null);
+        const col = useTargetCell ? worker.target.col : currentCell?.col;
+        const row = useTargetCell ? worker.target.row : currentCell?.row;
+        if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || row >= ROWS || col < 0 || col >= COLS) continue;
 
         const cell = gridData[row][col];
         if (cell.state === 2) {
@@ -37,8 +38,10 @@ function ensureWorkerRuntime(worker, index, now) {
     const rowSlots = Math.max(1, Math.ceil(Math.max(1, workers.length || 1) / colSlots));
     const slotCol = index % colSlots;
     const slotRow = Math.floor(index / colSlots) % rowSlots;
-    const homeX = farmStartX + gridWidth * ((slotCol + 0.5) / colSlots);
-    const homeY = farmStartY + gridHeight * ((slotRow + 0.5) / rowSlots) - (worker.type === 'drone' ? 18 : 0);
+    const farmW = typeof getFarmVisualWidth === 'function' ? getFarmVisualWidth() : gridWidth;
+    const farmH = typeof getFarmVisualHeight === 'function' ? getFarmVisualHeight() : gridHeight;
+    const homeX = farmStartX + farmW * ((slotCol + 0.5) / colSlots);
+    const homeY = farmStartY + farmH * ((slotRow + 0.5) / rowSlots) - (worker.type === 'drone' ? 18 : 0);
     const defaults = {
         wanderSeed: seed,
         homeX,
@@ -76,8 +79,10 @@ function updateWorkerPatrol(worker, now, canAutoSow, index = 0) {
         worker.targetUntil = now + getWorkerTargetHoldMs(worker);
         worker.idleUntil = 0;
     }
-    const targetX = worker.target?.x ?? (farmStartX + gridWidth / 2);
-    const targetY = worker.target?.y ?? (farmStartY + gridHeight / 2);
+    const farmW = typeof getFarmVisualWidth === 'function' ? getFarmVisualWidth() : gridWidth;
+    const farmH = typeof getFarmVisualHeight === 'function' ? getFarmVisualHeight() : gridHeight;
+    const targetX = worker.target?.x ?? (farmStartX + farmW / 2);
+    const targetY = worker.target?.y ?? (farmStartY + farmH / 2);
     const dx = targetX - worker.x;
     const dy = targetY - worker.y;
     const distance = Math.max(1, Math.hypot(dx, dy));
@@ -115,8 +120,8 @@ function updateWorkerPatrol(worker, now, canAutoSow, index = 0) {
     }
     worker.x += worker.vx;
     worker.y += worker.vy;
-    worker.x = Math.max(farmStartX + 8, Math.min(farmStartX + gridWidth - 8, worker.x));
-    worker.y = Math.max(farmStartY + 8, Math.min(farmStartY + gridHeight - 8, worker.y));
+    worker.x = Math.max(farmStartX + 8, Math.min(farmStartX + farmW - 8, worker.x));
+    worker.y = Math.max(farmStartY + 8, Math.min(farmStartY + farmH - 8, worker.y));
 }
 
 function isWorkerTargetDone(target, canAutoSow) {
@@ -156,10 +161,10 @@ function pickWorkerTarget(worker, canAutoSow, index = 0) {
         }
         if (cells.length > 0) {
             cells.sort((a, b) => {
-                const ax = farmStartX + a.col * TILE_SIZE + TILE_SIZE / 2;
-                const ay = farmStartY + a.row * TILE_SIZE + TILE_SIZE / 2;
-                const bx = farmStartX + b.col * TILE_SIZE + TILE_SIZE / 2;
-                const by = farmStartY + b.row * TILE_SIZE + TILE_SIZE / 2;
+                const ax = (typeof getFarmTileWorldX === 'function' ? getFarmTileWorldX(a.col) : farmStartX + a.col * TILE_SIZE) + TILE_SIZE / 2;
+                const ay = (typeof getFarmTileWorldY === 'function' ? getFarmTileWorldY(a.row) : farmStartY + a.row * TILE_SIZE) + TILE_SIZE / 2;
+                const bx = (typeof getFarmTileWorldX === 'function' ? getFarmTileWorldX(b.col) : farmStartX + b.col * TILE_SIZE) + TILE_SIZE / 2;
+                const by = (typeof getFarmTileWorldY === 'function' ? getFarmTileWorldY(b.row) : farmStartY + b.row * TILE_SIZE) + TILE_SIZE / 2;
                 return Math.hypot(ax - worker.x, ay - worker.y) - Math.hypot(bx - worker.x, by - worker.y);
             });
             const choice = cells[Math.min(cells.length - 1, Math.floor(Math.random() * Math.min(4, cells.length)))];
@@ -167,8 +172,8 @@ function pickWorkerTarget(worker, canAutoSow, index = 0) {
                 kind: state === 2 ? 'harvest' : 'sow',
                 row: choice.row,
                 col: choice.col,
-                x: farmStartX + choice.col * TILE_SIZE + TILE_SIZE / 2,
-                y: farmStartY + choice.row * TILE_SIZE + TILE_SIZE / 2 - (worker.type === 'drone' ? 14 : 0)
+                x: (typeof getFarmTileWorldX === 'function' ? getFarmTileWorldX(choice.col) : farmStartX + choice.col * TILE_SIZE) + TILE_SIZE / 2,
+                y: (typeof getFarmTileWorldY === 'function' ? getFarmTileWorldY(choice.row) : farmStartY + choice.row * TILE_SIZE) + TILE_SIZE / 2 - (worker.type === 'drone' ? 14 : 0)
             };
         }
     }
@@ -179,15 +184,17 @@ function pickWorkerWanderTarget(worker, index = 0) {
     ensureWorkerRuntime(worker, index, Date.now());
     worker.patrolPhase = typeof worker.patrolPhase === 'number' ? worker.patrolPhase + 1 : Math.floor(seededUnit(worker.wanderSeed, index) * 7);
     const phase = worker.patrolPhase;
-    const radiusX = Math.max(TILE_SIZE * 1.4, gridWidth * 0.16);
-    const radiusY = Math.max(TILE_SIZE * 1.4, gridHeight * 0.16);
+    const farmW = typeof getFarmVisualWidth === 'function' ? getFarmVisualWidth() : gridWidth;
+    const farmH = typeof getFarmVisualHeight === 'function' ? getFarmVisualHeight() : gridHeight;
+    const radiusX = Math.max(TILE_SIZE * 1.4, farmW * 0.16);
+    const radiusY = Math.max(TILE_SIZE * 1.4, farmH * 0.16);
     const angle = seededUnit(worker.wanderSeed, phase * 17) * Math.PI * 2;
     const wobbleX = Math.cos(angle) * radiusX * (0.35 + seededUnit(worker.wanderSeed, phase + 3) * 0.65);
     const wobbleY = Math.sin(angle) * radiusY * (0.35 + seededUnit(worker.wanderSeed, phase + 7) * 0.65);
     const jitterX = (seededUnit(worker.wanderSeed, phase + 11) - 0.5) * TILE_SIZE * 1.8;
     const jitterY = (seededUnit(worker.wanderSeed, phase + 19) - 0.5) * TILE_SIZE * 1.8;
-    const x = Math.max(farmStartX + 14, Math.min(farmStartX + gridWidth - 14, worker.homeX + wobbleX + jitterX));
-    const y = Math.max(farmStartY + 14, Math.min(farmStartY + gridHeight - 14, worker.homeY + wobbleY + jitterY));
+    const x = Math.max(farmStartX + 14, Math.min(farmStartX + farmW - 14, worker.homeX + wobbleX + jitterX));
+    const y = Math.max(farmStartY + 14, Math.min(farmStartY + farmH - 14, worker.homeY + wobbleY + jitterY));
     return {
         kind: 'patrol',
         x,

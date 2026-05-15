@@ -1,14 +1,18 @@
 // ==========================================
 // 地图与物理常量
 // ==========================================
-const TILE_SIZE = 34; 
-const ROWS = 16; const COLS = 16;
+const TILE_SIZE = 26;
+const FARM_PLOT_SIZE = 7;
+const ROWS = FARM_PLOT_SIZE * 2; const COLS = FARM_PLOT_SIZE * 2;
+const FARM_PLOT_GAP = 31;
+const WORLD_VIEW_FARM_SCREEN_X = 342;
+const WORLD_VIEW_FARM_SCREEN_Y = 122;
 
-const farmStartX = 170; const farmStartY = 150;
+const farmStartX = 374; const farmStartY = 128;
 const gridWidth = COLS * TILE_SIZE; const gridHeight = ROWS * TILE_SIZE; 
 
-const ranchStartX = farmStartX + gridWidth + 150; const ranchStartY = 150;
-const ranchWidth = 520; const ranchHeight = 520;
+const ranchStartX = 858; const ranchStartY = 102;
+const ranchWidth = 334; const ranchHeight = 366;
 
 const crossroadX = farmStartX + gridWidth + 100; 
 const crossroadY = farmStartY + gridHeight / 2;
@@ -27,10 +31,10 @@ const DRONE_UPGRADE_CONFIG = {
     cargo: { name: '收纳挂架', maxLevel: 3, baseCost: 1400, costStep: 1000, offlinePower: 8 }
 };
 const FARM_PLOTS = [
-    { id: 'northWest', name: '西北田', row: 0, col: 0, rows: 8, cols: 8, color: 'rgba(107, 142, 83, 0.50)' },
-    { id: 'northEast', name: '东北田', row: 0, col: 8, rows: 8, cols: 8, color: 'rgba(84, 126, 152, 0.46)' },
-    { id: 'southWest', name: '西南田', row: 8, col: 0, rows: 8, cols: 8, color: 'rgba(173, 124, 57, 0.44)' },
-    { id: 'southEast', name: '东南田', row: 8, col: 8, rows: 8, cols: 8, color: 'rgba(142, 94, 132, 0.42)' }
+    { id: 'northWest', name: '西北田', row: 0, col: 0, rows: FARM_PLOT_SIZE, cols: FARM_PLOT_SIZE, color: 'rgba(107, 142, 83, 0.50)' },
+    { id: 'northEast', name: '东北田', row: 0, col: FARM_PLOT_SIZE, rows: FARM_PLOT_SIZE, cols: FARM_PLOT_SIZE, color: 'rgba(84, 126, 152, 0.46)' },
+    { id: 'southWest', name: '西南田', row: FARM_PLOT_SIZE, col: 0, rows: FARM_PLOT_SIZE, cols: FARM_PLOT_SIZE, color: 'rgba(173, 124, 57, 0.44)' },
+    { id: 'southEast', name: '东南田', row: FARM_PLOT_SIZE, col: FARM_PLOT_SIZE, rows: FARM_PLOT_SIZE, cols: FARM_PLOT_SIZE, color: 'rgba(142, 94, 132, 0.42)' }
 ];
 
 // ==========================================

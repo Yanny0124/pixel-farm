@@ -46,7 +46,7 @@ let offlineReturnFx = null;
 let screenShake = { until: 0, power: 0 };
 let uiPreferences = { screenShake: true, autoSowEnabled: true, lastSeedTool: 'carrot' };
 let lastSaveTimestamp = Date.now();
-let camera = { x: -(farmStartX - 50), y: -(farmStartY - 50), zoom: 1 };
+let camera = { x: -(farmStartX - WORLD_VIEW_FARM_SCREEN_X), y: -(farmStartY - WORLD_VIEW_FARM_SCREEN_Y), zoom: 1 };
 
 function createDefaultSkills() {
     return {
@@ -112,7 +112,7 @@ function resetRuntimeState() {
     offlineReturnFx = null;
     screenShake = { until: 0, power: 0 };
     uiPreferences = { screenShake: true, autoSowEnabled: true, lastSeedTool: 'carrot' };
-    camera = { x: -(farmStartX - 50), y: -(farmStartY - 50), zoom: 1 };
+    camera = { x: -(farmStartX - WORLD_VIEW_FARM_SCREEN_X), y: -(farmStartY - WORLD_VIEW_FARM_SCREEN_Y), zoom: 1 };
     lastSaveTimestamp = Date.now();
     initGrid();
     ensureDiaryDay();
@@ -636,10 +636,13 @@ function addExp(amount) {
 
 function initGrid() {
     gridData = [];
+    const unlockSize = 4;
+    const unlockStartRow = Math.max(0, Math.floor(ROWS / 2) - Math.floor(unlockSize / 2));
+    const unlockStartCol = Math.max(0, Math.floor(COLS / 2) - Math.floor(unlockSize / 2));
     for (let r = 0; r < ROWS; r++) {
         const row = [];
         for (let c = 0; c < COLS; c++) {
-            const isCenter = r >= 6 && r <= 9 && c >= 6 && c <= 9;
+            const isCenter = r >= unlockStartRow && r < unlockStartRow + unlockSize && c >= unlockStartCol && c < unlockStartCol + unlockSize;
             row.push({ state: isCenter ? 0 : -1, timer: 0, cropType: null });
         }
         gridData.push(row);

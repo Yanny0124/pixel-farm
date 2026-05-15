@@ -1112,7 +1112,7 @@
     function renderMiracleBuildDom(content) {
         const list = document.createElement('div');
         list.className = 'bitcn-list';
-        (typeof getMiracleIds === 'function' ? getMiracleIds() : []).forEach(id => {
+        getVisibleMiracleDomIds().forEach(id => {
             const config = MIRACLE_CONFIG?.[id];
             if (!config) return;
             const state = ensureMiracleState(id);
@@ -1123,6 +1123,11 @@
             ]));
         });
         content.appendChild(list);
+    }
+
+    function getVisibleMiracleDomIds() {
+        const ids = typeof getMiracleIds === 'function' ? getMiracleIds() : [];
+        return ids.filter(id => id !== 'irrigation');
     }
 
     function createBuildCard(titleText, bodyText, metaText, actions = []) {
@@ -1273,7 +1278,7 @@
     }
 
     function renderMiracleJournalDom(content) {
-        (typeof getMiracleIds === 'function' ? getMiracleIds() : []).forEach(id => content.appendChild(createSimpleCard(`${MIRACLE_CONFIG[id].icon} ${MIRACLE_CONFIG[id].name}`, ensureMiracleState(id).completed ? MIRACLE_CONFIG[id].effect : getMiracleProgressText(id))));
+        getVisibleMiracleDomIds().forEach(id => content.appendChild(createSimpleCard(`${MIRACLE_CONFIG[id].icon} ${MIRACLE_CONFIG[id].name}`, ensureMiracleState(id).completed ? MIRACLE_CONFIG[id].effect : getMiracleProgressText(id))));
     }
 
     function renderVisitorsDom(content) {

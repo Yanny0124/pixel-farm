@@ -204,6 +204,7 @@ function zoomCamera(factor, anchorX = canvas.width / 2, anchorY = canvas.height 
     const after = screenToWorldPoint(anchorX, anchorY);
     camera.x += after.x - before.x;
     camera.y += after.y - before.y;
+    if (typeof window.clampCameraToView === 'function') window.clampCameraToView();
 }
 
 function resetCameraZoom() {
@@ -253,9 +254,10 @@ function closePanel() {
 }
 
 function showTileInfo(screenX, screenY, worldX, worldY) {
-    if (worldX < farmStartX || worldX > farmStartX + gridWidth || worldY < farmStartY || worldY > farmStartY + gridHeight) return false;
-    const col = Math.floor((worldX - farmStartX) / TILE_SIZE);
-    const row = Math.floor((worldY - farmStartY) / TILE_SIZE);
+    const target = typeof getFarmCellAtWorld === 'function' ? getFarmCellAtWorld(worldX, worldY) : null;
+    if (!target) return false;
+    const col = target.col;
+    const row = target.row;
     const cell = gridData[row]?.[col];
     if (!cell) return false;
 

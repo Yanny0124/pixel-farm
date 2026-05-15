@@ -41,7 +41,7 @@ function updateUI() {
         taskContainer.innerHTML = ''; 
         tasks.forEach((t, index) => {
             const config = CROP_CONFIG[t.item]; const isEnough = inventory[t.item] >= t.amount;
-            taskContainer.innerHTML += `<div class="task-item"><div class="task-req">${config.icon} 需求：${config.name} x${t.amount}</div><div class="task-req" style="font-weight: normal; font-size: 12px; color: ${isEnough ? '#27ae60' : '#e74c3c'};">进度: ${inventory[t.item]}/${t.amount}</div><div class="task-reward">💰 ${t.reward} 币 | ✨ ${t.exp} EXP</div><button class="task-btn" ${isEnough ? '' : 'disabled'} onclick="deliverTask(${index})">${isEnough ? '📦 交付' : '未达标'}</button></div>`;
+            taskContainer.innerHTML += `<div class="task-item"><div class="task-req">${config.icon} 需求：${config.name} x${t.amount}</div><div class="task-req" style="font-weight: normal; font-size: 12px; color: ${isEnough ? '#27ae60' : '#e74c3c'};">进度: ${inventory[t.item]}/${t.amount}</div><div class="task-reward">💰 ${t.reward} �?| �?${t.exp} EXP</div><button class="task-btn" ${isEnough ? '' : 'disabled'} onclick="deliverTask(${index})">${isEnough ? '📦 交付' : '未达�?}</button></div>`;
         });
     }
 }
@@ -127,14 +127,14 @@ function updateLogic() {
 function drawFarm() {
     ctx.save(); ctx.translate(camera.x, camera.y);
 
-    ctx.fillStyle = '#bdc3c7'; ctx.font = 'bold 24px Arial'; ctx.fillText('🌾 巨型种植区 (16x16)', farmStartX, farmStartY - 25);
+    ctx.fillStyle = '#bdc3c7'; ctx.font = 'bold 24px Arial'; ctx.fillText('🌾 巨型种植�?(14x14)', farmStartX, farmStartY - 25);
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
             const x = farmStartX + c * TILE_SIZE; const y = farmStartY + r * TILE_SIZE; const cell = gridData[r][c];
             if (cell.state === -1) {
                 ctx.fillStyle = '#7f8c8d'; ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
                 ctx.strokeStyle = '#95a5a6'; ctx.lineWidth = 1; ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
-                ctx.fillStyle = '#ecf0f1'; ctx.font = '10px Arial'; ctx.fillText('🔒50币', x + 5, y + 28);
+                ctx.fillStyle = '#ecf0f1'; ctx.font = '10px Arial'; ctx.fillText('🔒50�?, x + 5, y + 28);
                 continue;
             }
             ctx.strokeStyle = '#81c784'; ctx.lineWidth = 2; ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
@@ -146,7 +146,7 @@ function drawFarm() {
         }
     }
 
-    ctx.fillStyle = '#bdc3c7'; ctx.font = 'bold 24px Arial'; ctx.fillText('🐔🐮 皇家大牧场', ranchStartX, ranchStartY - 25);
+    ctx.fillStyle = '#bdc3c7'; ctx.font = 'bold 24px Arial'; ctx.fillText('🐔🐮 皇家大牧�?, ranchStartX, ranchStartY - 25);
     ctx.fillStyle = '#a5d6a7'; ctx.fillRect(ranchStartX, ranchStartY, ranchWidth, ranchHeight);
     ctx.strokeStyle = '#8d6e63'; ctx.lineWidth = 4; ctx.strokeRect(ranchStartX, ranchStartY, ranchWidth, ranchHeight);
 
@@ -209,11 +209,11 @@ window.selectTool = function(toolId) {
 
 window.hireWorker = function(type) {
     let cost = type === 'human' ? 1000 : 3000;
-    if (type === 'drone' && playerLevel < 5) { alert("等级不足！"); return; }
+    if (type === 'drone' && playerLevel < 5) { alert("等级不足�?); return; }
     if (coins >= cost) {
         coins -= cost; workers.push({ type: type, x: crossroadX, y: crossroadY, vx: -2, vy: (Math.random() - 0.5) * 2, actionTimer: 0 });
         effectText = `👷 雇佣成功！`; effectAlpha = 1.0; updateUI(); saveGame();
-    } else { alert("金币不足！"); }
+    } else { alert("金币不足�?); }
 }
 
 window.useSkill = function(skillId) {
@@ -228,11 +228,11 @@ window.useSkill = function(skillId) {
                 if (gridData[r][c].state === 0 && coins >= seedCost) { coins -= seedCost; gridData[r][c].state = 1; gridData[r][c].timer = now; gridData[r][c].cropType = currentSelectedTool; plantedCount++; }
             }
         }
-        if (plantedCount > 0) effectText = `🌱 播下了 ${plantedCount} 颗种子！`;
+        if (plantedCount > 0) effectText = `🌱 播下�?${plantedCount} 颗种子！`;
     } 
     else if (skillId === 'rain') {
         for (let r = 0; r < ROWS; r++) { for (let c = 0; c < COLS; c++) { if (gridData[r][c].state === 1) gridData[r][c].timer -= 10000; } }
-        effectText = "🌧️ 局部降雨！";
+        effectText = "🌧�?局部降雨！";
     } 
     else if (skillId === 'harvest') {
         let harvestedCount = 0; let expGained = 0;
@@ -241,7 +241,7 @@ window.useSkill = function(skillId) {
                 if (gridData[r][c].state === 2) { inventory[gridData[r][c].cropType] += 1; expGained += CROP_CONFIG[gridData[r][c].cropType].exp; gridData[r][c].state = 0; gridData[r][c].cropType = null; harvestedCount++; }
             }
         }
-        if(harvestedCount > 0) { effectText = `⚡ 收割完毕！`; addExp(expGained); }
+        if(harvestedCount > 0) { effectText = `�?收割完毕！`; addExp(expGained); }
     }
     updateUI(); skill.lastUsed = now; effectAlpha = 1.0; saveGame();
 };
@@ -268,7 +268,7 @@ canvas.addEventListener('mousedown', (e) => {
         if (playerLevel < CROP_CONFIG[currentSelectedTool].reqLevel) return;
         const col = Math.floor((worldX - farmStartX) / TILE_SIZE); const row = Math.floor((worldY - farmStartY) / TILE_SIZE); const cell = gridData[row][col]; 
         
-        if (cell.state === -1) { if (coins >= UNLOCK_PRICE) { coins -= UNLOCK_PRICE; cell.state = 0; } else { alert(`解锁需要 ${UNLOCK_PRICE} 币`); } } 
+        if (cell.state === -1) { if (coins >= UNLOCK_PRICE) { coins -= UNLOCK_PRICE; cell.state = 0; } else { alert(`解锁需�?${UNLOCK_PRICE} 币`); } } 
         else if (cell.state === 0) { const seedCost = CROP_CONFIG[currentSelectedTool].seedPrice; if (coins >= seedCost) { coins -= seedCost; cell.state = 1; cell.timer = Date.now(); cell.cropType = currentSelectedTool; } } 
         else if (cell.state === 2) { inventory[cell.cropType] += 1; addExp(CROP_CONFIG[cell.cropType].exp); cell.state = 0; cell.cropType = null; updateUI(); }
         saveGame();

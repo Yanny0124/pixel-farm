@@ -9,7 +9,7 @@ let grassPatternImage = null;
 let cropBaseCache = null;
 const GENERATED_ASSET_ROOT = 'assets/generated';
 const GENERATED_SPRITES = {
-    background: `${GENERATED_ASSET_ROOT}/environment/grassland_background.png`,
+    background: `${GENERATED_ASSET_ROOT}/environment/clean_farm_base_background_v2.png`,
     ranch: {
         coop: level => `${GENERATED_ASSET_ROOT}/ranch/coop_l${level}.png`,
         sheepfold: level => `${GENERATED_ASSET_ROOT}/ranch/sheepfold_l${level}.png`,
@@ -43,12 +43,17 @@ function initRenderer() {
 
 function renderFrame() {
     renderNow = Date.now();
+    if (typeof window.clampCameraToView === 'function') window.clampCameraToView();
     ctx.imageSmoothingEnabled = false;
     const shake = getSmoothShakeOffset();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     if (shake.x || shake.y) ctx.translate(shake.x, shake.y);
-    drawFarm();
+    try {
+        drawFarm();
+    } catch (error) {
+        console.error('[Renderer] drawFarm failed', error);
+    }
     drawWeatherLayer();
     drawOfflineReturnFx(ctx);
     drawCanvasUI(ctx);
@@ -82,6 +87,8 @@ function drawFarm() {
     ctx.scale(zoom, zoom);
     ctx.translate(-canvas.width / 2, -canvas.height / 2);
     ctx.translate(camera.x, camera.y);
+    beginWorldLayoutDebugFrame();
+    drawWorldGrassBackground();
     drawCropArea();
     drawProcessingBuildings();
     drawIrrigationCanal();
@@ -91,30 +98,30 @@ function drawFarm() {
     drawEternalBarn();
     drawVisitors();
     drawEffects(ctx);
+    drawWorldLayoutDebugOverlay();
     ctx.restore();
 }
 
 function drawFarmRoads() {
-    const roadY = farmStartY + gridHeight + 64;
-    const roadStartX = farmStartX + 32;
-    const roadEndX = Math.max(ranchStartX + ranchWidth + 74, farmStartX + gridWidth + 270);
-    const farmGateX = farmStartX + gridWidth / 2 - 17;
-    const ranchGateX = ranchStartX + ranchWidth / 2 - 17;
-    const processingGateX = farmStartX + Math.round(gridWidth * 0.70) - 17;
+    const roads = getRoadLayoutRects();
+    registerWorldLayoutDebugItem('road', getRoadZoneLayout(roads));
     ctx.save();
-
-    // 主路：把种植区、牧场和加工区串成一条清晰的横向动线。
-    drawStonePathRect(roadStartX, roadY, roadEndX - roadStartX, 34);
-    drawStonePathRect(farmGateX, farmStartY + gridHeight - 4, 34, roadY - (farmStartY + gridHeight) + 38);
-    drawStonePathRect(ranchGateX, ranchStartY + ranchHeight - 4, 34, roadY - (ranchStartY + ranchHeight) + 38);
-    drawStonePathRect(processingGateX, roadY - 12, 34, 78);
-
-    // 右侧支路连接永恒谷仓和牧场边门，避免建筑像被随机撒在草地上。
-    drawStonePathRect(ranchStartX + ranchWidth + 24, ranchStartY + 116, 34, ranchHeight - 18);
-    drawStonePathRect(ranchStartX + ranchWidth - 12, ranchStartY + ranchHeight - 38, 70, 34);
-    drawStonePathRect(ranchStartX + ranchWidth + 24, roadY - 4, 34, 118);
+    roads.forEach(({ key, layout }) => {
+        const rect = layout.rect;
+        drawStonePathRect(rect.x, rect.y, rect.w, rect.h);
+        registerWorldLayoutDebugItem(`road.${key}`, layout);
+    });
     ctx.restore();
 }
+
+/*
+
+    // 主路：把种植区、牧场和加工区串成一条清晰的横向动线。
+
+    // 右侧支路连接永恒谷仓和牧场边门，避免建筑像被随机撒在草地上。
+}
+
+*/
 
 function drawStonePathRect(x, y, w, h) {
     ctx.fillStyle = '#8e8b78';
@@ -133,29 +140,34 @@ function drawStonePathRect(x, y, w, h) {
 }
 
 function drawWorldGrassBackground() {
-    const image = getGeneratedImage(GENERATED_SPRITES.background);
+    const backgroundPath = getWorldBackgroundImagePath();
+    const image = getGeneratedImage(backgroundPath);
+    const layout = getWorldBackgroundLayout();
+    drawWorldBackgroundFill();
+    registerWorldLayoutDebugItem('background', layout.debug);
     if (!image || !image.complete || !image.naturalWidth) {
-        ctx.fillStyle = '#7fab5c';
-        ctx.fillRect(-camera.x - canvas.width, -camera.y - canvas.height, canvas.width * 3, canvas.height * 3);
         return;
     }
+    drawGeneratedImage(backgroundPath, layout.base.x, layout.base.y, layout.base.w, layout.base.h);
+}
+
+function drawWorldBackgroundFill() {
     const left = -camera.x - canvas.width;
     const top = -camera.y - canvas.height;
     const right = -camera.x + canvas.width * 2;
     const bottom = -camera.y + canvas.height * 2;
     ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    if (!grassPattern || grassPatternImage !== image) {
-        grassPattern = ctx.createPattern(image, 'repeat');
-        grassPatternImage = image;
-    }
-    ctx.fillStyle = grassPattern || '#7fab5c';
+    ctx.fillStyle = '#cfe3ba';
     ctx.fillRect(left, top, right - left, bottom - top);
+    ctx.fillStyle = 'rgba(92, 132, 81, 0.16)';
+    for (let y = top - 60; y < bottom + 60; y += 96) {
+        ctx.fillRect(left, y, right - left, 4);
+    }
     ctx.restore();
 }
 
 function preloadGeneratedAssets() {
-    const paths = new Set([GENERATED_SPRITES.background]);
+    const paths = new Set([getWorldBackgroundImagePath()]);
     GENERATED_SPRITES.workers.human.concat(GENERATED_SPRITES.workers.drone).forEach(path => paths.add(path));
     paths.forEach(getGeneratedImage);
 }
@@ -196,6 +208,34 @@ function drawCenteredGeneratedImage(path, cx, baseY, maxW, maxH, options = {}) {
     return drawGeneratedImage(path, cx - w / 2, baseY - h, w, h, options);
 }
 
+function getWorldBackgroundLayout() {
+    const imageRatio = 1417 / 1110;
+    const viewW = canvas?.width || 1600;
+    const viewH = canvas?.height || 900;
+    let w = viewW;
+    let h = w / imageRatio;
+    if (h > viewH) {
+        h = viewH;
+        w = h * imageRatio;
+    }
+    const anchorX = typeof WORLD_VIEW_FARM_SCREEN_X !== 'undefined' ? WORLD_VIEW_FARM_SCREEN_X : 50;
+    const anchorY = typeof WORLD_VIEW_FARM_SCREEN_Y !== 'undefined' ? WORLD_VIEW_FARM_SCREEN_Y : 50;
+    const defaultLeft = farmStartX - anchorX;
+    const defaultTop = farmStartY - anchorY;
+    const fallback = {
+        x: defaultLeft - (w - viewW) / 2,
+        y: defaultTop - (h - viewH) / 2,
+        w,
+        h,
+        anchor: 'top-left'
+    };
+    const layout = getWorldLayoutVisual(['background'], fallback);
+    return {
+        base: layout.rect,
+        debug: layout
+    };
+}
+
 function worldToScreen(worldX, worldY) {
     const zoom = camera.zoom || 1;
     return {
@@ -227,22 +267,208 @@ function drawRoundRect(targetCtx, x, y, width, height, radius, fillStyle, stroke
     }
 }
 
+function beginWorldLayoutDebugFrame() {
+    if (window.LayoutDebug?.beginFrame) window.LayoutDebug.beginFrame();
+}
+
+function drawWorldLayoutDebugOverlay() {
+    if (window.LayoutDebug?.draw) window.LayoutDebug.draw(ctx);
+}
+
+function registerWorldLayoutDebugItem(key, layout) {
+    if (!window.LayoutDebug?.record || !layout) return;
+    window.LayoutDebug.record(key, layout.rect || layout, {
+        configRect: layout.visual || layout.rect || layout,
+        visualRef: layout.visualRef || null,
+        layoutEntry: layout.entry || null,
+        path: layout.path || ''
+    });
+}
+
+function getWorldLayoutEntry(path) {
+    let node = window.WORLD_LAYOUT;
+    for (const part of path) {
+        if (!node || typeof node !== 'object') return null;
+        node = node[part];
+    }
+    return node || null;
+}
+
+function getWorldLayoutImage(entry, fallback) {
+    return entry?.image || fallback;
+}
+
+function getWorldBackgroundImagePath() {
+    return getWorldLayoutImage(getWorldLayoutEntry(['background']), GENERATED_SPRITES.background);
+}
+
+function getWorldLayoutVisual(path, fallback) {
+    const entry = getWorldLayoutEntry(path);
+    const visualRef = entry?.visual || (entry && entry.x !== undefined ? entry : null);
+    const visual = normalizeWorldLayoutVisual(visualRef, fallback);
+    const offset = entry?.visualOffset || visualRef?.visualOffset || null;
+    const offsetVisual = applyWorldLayoutOffset(visual, offset);
+    return {
+        entry,
+        visualRef,
+        visual: offsetVisual,
+        rect: resolveWorldLayoutAnchor(offsetVisual),
+        path: path.join('.')
+    };
+}
+
+function normalizeWorldLayoutVisual(visual, fallback = {}) {
+    const source = visual || {};
+    const w = getFiniteNumber(source.w ?? source.width, getFiniteNumber(fallback.w ?? fallback.width, 0));
+    const h = getFiniteNumber(source.h ?? source.height, getFiniteNumber(fallback.h ?? fallback.height, 0));
+    return {
+        x: getFiniteNumber(source.x, getFiniteNumber(fallback.x, 0)),
+        y: getFiniteNumber(source.y, getFiniteNumber(fallback.y, 0)),
+        w,
+        h,
+        anchor: source.anchor || fallback.anchor || 'top-left'
+    };
+}
+
+function getFiniteNumber(value, fallback) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+}
+
+function applyWorldLayoutOffset(visual, offset) {
+    if (!offset) return visual;
+    return {
+        ...visual,
+        x: visual.x + getFiniteNumber(offset.x, 0),
+        y: visual.y + getFiniteNumber(offset.y, 0)
+    };
+}
+
+function resolveWorldLayoutAnchor(visual) {
+    const rect = {
+        x: visual.x,
+        y: visual.y,
+        w: visual.w,
+        h: visual.h,
+        anchor: visual.anchor || 'top-left'
+    };
+    if (rect.anchor === 'center') {
+        rect.x -= rect.w / 2;
+        rect.y -= rect.h / 2;
+    } else if (rect.anchor === 'bottom-center') {
+        rect.x -= rect.w / 2;
+        rect.y -= rect.h;
+    }
+    return rect;
+}
+
+function getDefaultFarmAreaRect() {
+    return {
+        x: farmStartX,
+        y: farmStartY,
+        w: gridWidth + getFarmPlotGap(),
+        h: gridHeight + getFarmPlotGap(),
+        anchor: 'top-left'
+    };
+}
+
+function getFarmAreaLayout() {
+    return getWorldLayoutVisual(['zones', 'farmland'], getDefaultFarmAreaRect());
+}
+
+function getFarmRenderOrigin() {
+    const rect = getFarmAreaLayout().rect;
+    return { x: rect.x, y: rect.y };
+}
+
+function getPastureAreaLayout() {
+    return getWorldLayoutVisual(['zones', 'pasture'], {
+        x: ranchStartX,
+        y: ranchStartY,
+        w: ranchWidth,
+        h: ranchHeight,
+        anchor: 'top-left'
+    });
+}
+
+function getRoadLayoutRects() {
+    const farmRect = getDefaultFarmAreaRect();
+    const roadY = farmRect.y + farmRect.h + 64;
+    const roadStartX = farmRect.x + 32;
+    const roadEndX = Math.max(ranchStartX + ranchWidth + 74, farmRect.x + farmRect.w + 270);
+    const fallback = {
+        main: { x: roadStartX, y: roadY, w: roadEndX - roadStartX, h: 34, anchor: 'top-left' },
+        farmGate: { x: farmRect.x + farmRect.w / 2 - 17, y: farmRect.y + farmRect.h - 4, w: 34, h: roadY - (farmRect.y + farmRect.h) + 38, anchor: 'top-left' },
+        ranchGate: { x: ranchStartX + ranchWidth / 2 - 17, y: ranchStartY + ranchHeight - 4, w: 34, h: roadY - (ranchStartY + ranchHeight) + 38, anchor: 'top-left' },
+        processingGate: { x: farmRect.x + Math.round(farmRect.w * 0.70) - 17, y: roadY - 12, w: 34, h: 78, anchor: 'top-left' },
+        ranchSide: { x: ranchStartX + ranchWidth + 24, y: ranchStartY + 116, w: 34, h: ranchHeight - 18, anchor: 'top-left' },
+        ranchBottom: { x: ranchStartX + ranchWidth - 12, y: ranchStartY + ranchHeight - 38, w: 70, h: 34, anchor: 'top-left' },
+        ranchConnector: { x: ranchStartX + ranchWidth + 24, y: roadY - 4, w: 34, h: 118, anchor: 'top-left' }
+    };
+    const configured = getWorldLayoutEntry(['roads']);
+    const keys = Array.from(new Set(Object.keys(fallback).concat(configured ? Object.keys(configured) : [])));
+    return keys.map(key => ({
+        key,
+        layout: getWorldLayoutVisual(['roads', key], fallback[key] || { x: 0, y: 0, w: 0, h: 0, anchor: 'top-left' })
+    }));
+}
+
+function getRoadZoneLayout(roads) {
+    const rects = roads.map(item => item.layout.rect).filter(rect => rect.w > 0 && rect.h > 0);
+    if (rects.length === 0) {
+        return getWorldLayoutVisual(['zones', 'road'], { x: 0, y: 0, w: 0, h: 0, anchor: 'top-left' });
+    }
+    const left = Math.min(...rects.map(rect => rect.x));
+    const top = Math.min(...rects.map(rect => rect.y));
+    const right = Math.max(...rects.map(rect => rect.x + rect.w));
+    const bottom = Math.max(...rects.map(rect => rect.y + rect.h));
+    return getWorldLayoutVisual(['zones', 'road'], {
+        x: left,
+        y: top,
+        w: right - left,
+        h: bottom - top,
+        anchor: 'top-left'
+    });
+}
+
+function getBuildingVisualLayout(group, id, config) {
+    return getWorldLayoutVisual(['buildings', group, id], {
+        x: config.x,
+        y: config.y,
+        w: config.w,
+        h: config.h,
+        anchor: 'top-left'
+    });
+}
+
+function getMiracleVisualLayout(id, part, fallback) {
+    return getWorldLayoutVisual(['miracles', id, part], fallback);
+}
+
+function getNpcMapAvatarLayout(id, index, fallback) {
+    return getWorldLayoutVisual(['npcs', id, 'mapAvatar'], fallback);
+}
+
 
 let referenceFarmLayoutKey = '';
 
 function applyReferenceFarmLayout() {
+    // Legacy hook retained for callers; visual placement now lives in WORLD_LAYOUT.
+    return;
     if (typeof farmStartX === 'undefined' || typeof farmStartY === 'undefined') return;
     if (typeof gridWidth === 'undefined' || typeof gridHeight === 'undefined') return;
     if (typeof ranchStartX === 'undefined' || typeof ranchStartY === 'undefined') return;
     if (typeof ranchWidth === 'undefined' || typeof ranchHeight === 'undefined') return;
 
-    const key = [farmStartX, farmStartY, gridWidth, gridHeight, ranchStartX, ranchStartY, ranchWidth, ranchHeight].join('|');
+    const farmW = typeof getFarmVisualWidth === 'function' ? getFarmVisualWidth() : gridWidth;
+    const farmH = typeof getFarmVisualHeight === 'function' ? getFarmVisualHeight() : gridHeight;
+    const key = [farmStartX, farmStartY, farmW, farmH, ranchStartX, ranchStartY, ranchWidth, ranchHeight].join('|');
     if (key === referenceFarmLayoutKey) return;
     referenceFarmLayoutKey = key;
 
     // 参考图布局：左侧种植区、右侧牧场、底部加工建筑沿一条石路排开。
     // 这里直接调整配置对象，点击判定、建造面板和 Canvas 绘制会使用同一套坐标。
-    const bottomRoadY = farmStartY + gridHeight + 64;
+    const bottomRoadY = farmStartY + farmH + 64;
     const processingY = bottomRoadY + 8;
     const clampWidth = value => Math.max(110, Math.min(148, value));
 
@@ -251,25 +477,25 @@ function applyReferenceFarmLayout() {
             mill: {
                 x: farmStartX + 38,
                 y: processingY,
-                w: clampWidth(gridWidth * 0.19),
+                w: clampWidth(farmW * 0.19),
                 h: 116
             },
             ketchupFactory: {
-                x: farmStartX + Math.round(gridWidth * 0.28),
+                x: farmStartX + Math.round(farmW * 0.28),
                 y: processingY + 2,
-                w: clampWidth(gridWidth * 0.18),
+                w: clampWidth(farmW * 0.18),
                 h: 112
             },
             bakery: {
-                x: farmStartX + Math.round(gridWidth * 0.58),
+                x: farmStartX + Math.round(farmW * 0.58),
                 y: processingY + 6,
-                w: clampWidth(gridWidth * 0.18),
+                w: clampWidth(farmW * 0.18),
                 h: 110
             },
             dairy: {
-                x: farmStartX + Math.round(gridWidth * 0.78),
+                x: farmStartX + Math.round(farmW * 0.78),
                 y: processingY + 4,
-                w: clampWidth(gridWidth * 0.18),
+                w: clampWidth(farmW * 0.18),
                 h: 112
             }
         };
@@ -328,9 +554,8 @@ function applyReferenceFarmLayout() {
 }
 
 function drawCropArea() {
-    ctx.fillStyle = '#bdc3c7';
-    ctx.font = 'bold 24px Arial';
-    ctx.fillText('巨型种植区 (16x16)', farmStartX, farmStartY - 25);
+    const farmLayout = getFarmAreaLayout();
+    registerWorldLayoutDebugItem('farmland', farmLayout);
     drawCropBaseLayer();
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
@@ -342,9 +567,8 @@ function drawCropArea() {
 }
 
 function drawCropAreaStable() {
-    ctx.fillStyle = '#bdc3c7';
-    ctx.font = 'bold 24px Arial';
-    ctx.fillText('巨型种植区 (16x16)', farmStartX, farmStartY - 25);
+    const farmLayout = getFarmAreaLayout();
+    registerWorldLayoutDebugItem('farmland', farmLayout);
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
             drawTileStable(r, c);
@@ -354,22 +578,61 @@ function drawCropAreaStable() {
     drawMatureResonanceLinks();
 }
 
+function getFarmPlotGap() {
+    return typeof FARM_PLOT_GAP !== 'undefined' ? FARM_PLOT_GAP : 0;
+}
+
+function getFarmTileLocalX(col) {
+    const plotSize = typeof FARM_PLOT_SIZE !== 'undefined' ? FARM_PLOT_SIZE : Math.floor(COLS / 2);
+    return col * TILE_SIZE + (col >= plotSize ? getFarmPlotGap() : 0);
+}
+
+function getFarmTileLocalY(row) {
+    const plotSize = typeof FARM_PLOT_SIZE !== 'undefined' ? FARM_PLOT_SIZE : Math.floor(ROWS / 2);
+    return row * TILE_SIZE + (row >= plotSize ? getFarmPlotGap() : 0);
+}
+
+function getFarmTileWorldX(col) {
+    return getFarmRenderOrigin().x + getFarmTileLocalX(col);
+}
+
+function getFarmTileWorldY(row) {
+    return getFarmRenderOrigin().y + getFarmTileLocalY(row);
+}
+
+function getFarmVisualWidth() {
+    return gridWidth + getFarmPlotGap();
+}
+
+function getFarmVisualHeight() {
+    return gridHeight + getFarmPlotGap();
+}
+
+function getMatureBorderInset() {
+    return Math.max(2, TILE_SIZE * 0.09);
+}
+
+function isRenderLargeCropWithinFarmPlot(row, col) {
+    const plotSize = typeof FARM_PLOT_SIZE !== 'undefined' ? FARM_PLOT_SIZE : Math.floor(COLS / 2);
+    const startPlotCol = Math.floor(col / plotSize);
+    const endPlotCol = Math.floor((col + 1) / plotSize);
+    const startPlotRow = Math.floor(row / plotSize);
+    const endPlotRow = Math.floor((row + 1) / plotSize);
+    return startPlotCol === endPlotCol && startPlotRow === endPlotRow;
+}
+
 function drawTileStable(r, c) {
-    const x = farmStartX + c * TILE_SIZE;
-    const y = farmStartY + r * TILE_SIZE;
+    const x = getFarmTileWorldX(c);
+    const y = getFarmTileWorldY(r);
     const cell = gridData[r][c];
     if (cell.state === -1) {
-        drawSoilTexture(ctx, x, y, TILE_SIZE, r * COLS + c, true);
-        ctx.fillStyle = '#ecf0f1';
+        ctx.fillStyle = 'rgba(70, 68, 54, 0.42)';
+        ctx.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+        ctx.fillStyle = 'rgba(255, 248, 223, 0.9)';
         ctx.font = '10px Arial';
         ctx.fillText('50币', x + 5, y + 28);
         return;
     }
-
-    drawSoilTexture(ctx, x, y, TILE_SIZE, r * COLS + c, false);
-    ctx.strokeStyle = '#81c784';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
 
     if (cell.state === 4) {
         ctx.fillStyle = 'rgba(230, 126, 34, 0.10)';
@@ -387,36 +650,35 @@ function drawCropBaseLayer() {
             canvas: buildCropBaseCanvas()
         };
     }
-    ctx.drawImage(cropBaseCache.canvas, farmStartX, farmStartY);
+    const origin = getFarmRenderOrigin();
+    ctx.drawImage(cropBaseCache.canvas, origin.x, origin.y);
 }
 
 function getCropBaseCacheKey() {
     const lockedMask = gridData.map(row => row.map(cell => cell.state === -1 ? '1' : '0').join('')).join('');
-    return `${weather.type}|${TILE_SIZE}|${ROWS}x${COLS}|${lockedMask}`;
+    return `${TILE_SIZE}|${ROWS}x${COLS}|gap:${getFarmPlotGap()}|${lockedMask}`;
 }
 
 function buildCropBaseCanvas() {
     const buffer = document.createElement('canvas');
-    buffer.width = gridWidth;
-    buffer.height = gridHeight;
+    buffer.width = getFarmVisualWidth();
+    buffer.height = getFarmVisualHeight();
     const previousCtx = ctx;
     try {
         ctx = buffer.getContext('2d');
         ctx.imageSmoothingEnabled = false;
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
-                const x = c * TILE_SIZE;
-                const y = r * TILE_SIZE;
+                const x = getFarmTileLocalX(c);
+                const y = getFarmTileLocalY(r);
                 const cell = gridData[r][c];
-                drawSoilTexture(ctx, x, y, TILE_SIZE, r * COLS + c, cell.state === -1);
+
                 if (cell.state === -1) {
-                    ctx.fillStyle = '#ecf0f1';
+                    ctx.fillStyle = 'rgba(70, 68, 54, 0.42)';
+                    ctx.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+                    ctx.fillStyle = 'rgba(255, 248, 223, 0.9)';
                     ctx.font = '10px Arial';
                     ctx.fillText('50币', x + 5, y + 28);
-                } else {
-                    ctx.strokeStyle = '#81c784';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
                 }
             }
         }
@@ -435,8 +697,8 @@ function drawFarmPlotDividers() {
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     for (const plot of FARM_PLOTS) {
-        const x = farmStartX + plot.col * TILE_SIZE;
-        const y = farmStartY + plot.row * TILE_SIZE;
+        const x = getFarmTileWorldX(plot.col);
+        const y = getFarmTileWorldY(plot.row);
         const w = plot.cols * TILE_SIZE;
         const h = plot.rows * TILE_SIZE;
         ctx.strokeStyle = plot.color || 'rgba(255,255,255,0.5)';
@@ -452,8 +714,8 @@ function drawFarmPlotDividers() {
 }
 
 function drawCropTileOverlay(r, c) {
-    const x = farmStartX + c * TILE_SIZE;
-    const y = farmStartY + r * TILE_SIZE;
+    const x = getFarmTileWorldX(c);
+    const y = getFarmTileWorldY(r);
     const cell = gridData[r][c];
     if (cell.state === -1) return;
 
@@ -478,7 +740,7 @@ function drawCropInTile(cell, x, y) {
         } else {
             drawCropSprite(ctx, cell.cropType, stageCount - 1, x, y, TILE_SIZE);
         }
-        const matureInset = 2.5;
+        const matureInset = getMatureBorderInset();
         ctx.save();
         ctx.strokeStyle = '#f1c40f';
         ctx.lineWidth = 2;
@@ -497,13 +759,20 @@ function drawLargeMatureCrops() {
         for (let c = 0; c < COLS; c++) {
             const cell = gridData[r][c];
             if (cell.state !== 2 || cell.cropType !== 'pumpkin') continue;
-            const x = farmStartX + c * TILE_SIZE;
-            const y = farmStartY + r * TILE_SIZE;
+            if (!isRenderLargeCropWithinFarmPlot(r, c)) continue;
+            const x = getFarmTileWorldX(c);
+            const y = getFarmTileWorldY(r);
             const stageCount = CROP_CONFIG.pumpkin.stages || 5;
+            const matureInset = getMatureBorderInset();
             drawCropSprite(ctx, 'pumpkin', stageCount - 1, x, y, TILE_SIZE * 2);
             ctx.strokeStyle = '#f1c40f';
             ctx.lineWidth = 2;
-            ctx.strokeRect(x + 3, y + 3, TILE_SIZE * 2 - 6, TILE_SIZE * 2 - 6);
+            ctx.strokeRect(
+                x + matureInset,
+                y + matureInset,
+                TILE_SIZE * 2 - matureInset * 2,
+                TILE_SIZE * 2 - matureInset * 2
+            );
         }
     }
 }
@@ -521,17 +790,17 @@ function drawMatureResonanceLinks() {
             if (cell.state !== 2 || !cell.cropType) continue;
             const right = gridData[r]?.[c + 1];
             const down = gridData[r + 1]?.[c];
-            const cx = farmStartX + c * TILE_SIZE + TILE_SIZE / 2;
-            const cy = farmStartY + r * TILE_SIZE + TILE_SIZE / 2;
+            const cx = getFarmTileWorldX(c) + TILE_SIZE / 2;
+            const cy = getFarmTileWorldY(r) + TILE_SIZE / 2;
             if (right && right.state === 2 && right.cropType === cell.cropType) {
                 ctx.moveTo(cx, cy);
-                ctx.lineTo(cx + TILE_SIZE, cy);
+                ctx.lineTo(getFarmTileWorldX(c + 1) + TILE_SIZE / 2, cy);
                 linksDrawn++;
                 if (linksDrawn >= maxLinks) break;
             }
             if (down && down.state === 2 && down.cropType === cell.cropType) {
                 ctx.moveTo(cx, cy);
-                ctx.lineTo(cx, cy + TILE_SIZE);
+                ctx.lineTo(cx, getFarmTileWorldY(r + 1) + TILE_SIZE / 2);
                 linksDrawn++;
                 if (linksDrawn >= maxLinks) break;
             }
@@ -543,17 +812,11 @@ function drawMatureResonanceLinks() {
 }
 
 function drawRanch() {
-    ctx.save();
-    drawRoundRect(ctx, ranchStartX - 16, ranchStartY - 54, 230, 34, 9, 'rgba(255, 248, 223, 0.82)', 'rgba(112, 67, 39, 0.55)');
-    ctx.fillStyle = '#4b3a2a';
-    ctx.font = 'bold 24px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('🐑🐄 皇家大牧场', ranchStartX, ranchStartY - 25);
-
-    ctx.fillStyle = 'rgba(126, 171, 91, 0.34)';
-    ctx.fillRect(ranchStartX, ranchStartY, ranchWidth, ranchHeight);
-    drawRanchFenceFrame(ranchStartX, ranchStartY, ranchWidth, ranchHeight);
-    ctx.restore();
+    const pastureLayout = getPastureAreaLayout();
+    const pastureRect = pastureLayout.rect;
+    const ranchStartX = pastureRect.x;
+    const ranchStartY = pastureRect.y;
+    registerWorldLayoutDebugItem('pasture', pastureLayout);
     drawRanchBuildings();
 }
 
@@ -629,41 +892,28 @@ function drawFenceRun(x, y, length, direction, gaps = []) {
 function drawIrrigationCanal() {
     const state = miracleState.irrigation;
     if (!state || state.stage <= 0) return;
-    const progress = state.completed ? 1 : state.stage / MIRACLE_CONFIG.irrigation.stages.length;
-    const x = farmStartX - 36;
-    const y = farmStartY - 20;
-    const w = gridWidth + 72;
-    const h = gridHeight + 40;
-    ctx.save();
-    ctx.globalAlpha = 0.42 + progress * 0.5;
-    ctx.strokeStyle = state.completed ? '#3498db' : '#78909c';
-    ctx.lineWidth = 6;
-    ctx.strokeRect(x, y, w, h);
-    ctx.strokeStyle = state.completed ? '#85d7ff' : '#b0bec5';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x + 8, y + 8, w - 16, h - 16);
-    const stage = state.completed ? 7 : Math.max(1, Math.min(state.stage, 7));
-    const spritePath = GENERATED_SPRITES.miracles.irrigation(stage);
-    drawCenteredGeneratedImage(spritePath, farmStartX + 108, farmStartY - 6, 178, 108);
-    drawRoundRect(ctx, x + 14, y + 16, 132, 24, 12, 'rgba(248, 249, 244, 0.86)', state.completed ? '#3498db' : '#78909c');
-    ctx.fillStyle = state.completed ? '#2980b9' : '#607d6f';
-    ctx.font = 'bold 12px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(`先祖灌溉渠 ${state.completed ? '完成' : `${state.stage}/7`}`, x + 80, y + 32);
-    ctx.restore();
 }
 
 function drawEternalBarn() {
     const state = miracleState.barn;
     if (!state || state.stage <= 0) return;
     const progress = state.completed ? 1 : state.stage / MIRACLE_CONFIG.barn.stages.length;
-    const x = ranchStartX + ranchWidth - 188;
-    const y = ranchStartY + ranchHeight + 22;
+    const pastureRect = getPastureAreaLayout().rect;
+    const barnLayout = getMiracleVisualLayout('barn', 'building', {
+        x: pastureRect.x + pastureRect.w - 134,
+        y: pastureRect.y + pastureRect.h + 64,
+        w: 150,
+        h: 134,
+        anchor: 'top-left'
+    });
+    const x = barnLayout.rect.x;
+    const y = barnLayout.rect.y;
+    registerWorldLayoutDebugItem('barn', barnLayout);
     ctx.save();
     ctx.globalAlpha = 0.7 + progress * 0.3;
     const stage = state.completed ? 5 : Math.max(1, Math.min(state.stage, 5));
     const spritePath = GENERATED_SPRITES.miracles.barn(stage);
-    const drawn = drawCenteredGeneratedImage(spritePath, x + 75, y + 134, 220, 176);
+    const drawn = drawCenteredGeneratedImage(spritePath, x + 75, y + 134, 158, 132);
     if (drawn) {
         drawRoundRect(ctx, x + 8, y + 134, 134, 23, 12, 'rgba(248, 249, 244, 0.86)', state.completed ? '#f4d35e' : '#8d7f64');
         ctx.fillStyle = state.completed ? '#8e5b2d' : '#607d6f';
@@ -695,15 +945,17 @@ function drawProcessingBuildings() {
         const config = PROCESSING_BUILDING_CONFIG[id];
         const level = getProcessingBuildingLevel(id);
         if (!shouldRevealProcessingSite(id)) return;
-        const x = config.x;
-        const y = config.y;
-        const w = config.w;
-        const h = config.h;
+        const layout = getBuildingVisualLayout('processing', id, config);
+        const x = layout.rect.x;
+        const y = layout.rect.y;
+        const w = layout.rect.w;
+        const h = layout.rect.h;
+        registerWorldLayoutDebugItem(id, layout);
         ctx.save();
         ctx.globalAlpha = level > 0 ? 1 : 0.45;
         const spriteLevel = Math.max(1, Math.min(level || 1, 4));
         const spritePath = GENERATED_SPRITES.processing[id]?.(spriteLevel);
-        const drawn = drawCenteredGeneratedImage(spritePath, x + w / 2, y + h + 12, 148, 144, { locked: level <= 0 });
+        const drawn = drawCenteredGeneratedImage(spritePath, x + w / 2, y + h + 8, w * 1.12, h * 1.16, { locked: level <= 0 });
         if (drawn) {
             drawGeneratedBuildingBadge(x, y, w, h, config.name, level, level > 0 ? null : `Lv.${config.reqLevel}`);
             drawProcessingJobBadge(id, x, y, w, h);
@@ -729,9 +981,6 @@ function drawProcessingBuildings() {
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(level > 0 ? `L${level}` : '锁', x + w - 24, y + h - 12);
-        ctx.fillStyle = level > 0 ? '#263238' : '#7f8c8d';
-        ctx.font = 'bold 13px Arial';
-        ctx.fillText(config.name, x + w / 2, y + 18);
         const job = getProcessingJob(id);
         if (job) {
             const progress = Math.max(0, Math.min(1, (getRenderNow() - job.startedAt) / job.duration));
@@ -743,7 +992,7 @@ function drawProcessingBuildings() {
         } else if (processingAuto[id]) {
             ctx.fillStyle = '#f39c12';
             ctx.font = 'bold 11px Arial';
-            ctx.fillText('鑷姩', x + w / 2, y + h - 14);
+            ctx.fillText('自动', x + w / 2, y + h - 14);
         }
         ctx.restore();
     });
@@ -756,15 +1005,6 @@ function drawGeneratedBuildingBadge(x, y, w, h, name, level, lockedText) {
     ctx.font = 'bold 10px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(level > 0 ? `L${level}` : '锁', x + w - 24, y + h - 12);
-    drawRoundRect(ctx, x + 4, y - 2, w - 8, 20, 8, 'rgba(255, 248, 223, 0.84)', 'rgba(112, 67, 39, 0.36)');
-    ctx.fillStyle = level > 0 ? '#263238' : '#7f8c8d';
-    ctx.font = 'bold 12px Arial';
-    ctx.fillText(name, x + w / 2, y + 13);
-    if (lockedText) {
-        drawRoundRect(ctx, x + 12, y + h - 44, w - 24, 18, 8, 'rgba(248, 249, 244, 0.84)', null);
-        ctx.font = 'bold 10px Arial';
-        ctx.fillText(lockedText, x + w / 2, y + h - 31);
-    }
 }
 
 function drawProcessingJobBadge(id, x, y, w, h) {
@@ -838,10 +1078,13 @@ function drawRanchBuildings() {
         ctx.save();
         ctx.globalAlpha = level > 0 ? 1 : 0.48;
 
-        const x = config.x;
-        const y = config.y;
-        const w = config.w;
-        const h = config.h;
+        const layout = getBuildingVisualLayout('ranch', id, config);
+        const x = layout.rect.x;
+        const y = layout.rect.y;
+        const w = layout.rect.w;
+        const h = layout.rect.h;
+        const visualConfig = { ...config, x, y, w, h };
+        registerWorldLayoutDebugItem(id, layout);
 
         ctx.fillStyle = 'rgba(60, 70, 64, 0.18)';
         ctx.fillRect(x + 8, y + h - 8, w - 16, 10);
@@ -849,9 +1092,9 @@ function drawRanchBuildings() {
         const maxSpriteLevel = id === 'apiary' || id === 'pigpen' ? 3 : 4;
         const spriteLevel = Math.max(1, Math.min(level || 1, maxSpriteLevel));
         const spritePath = GENERATED_SPRITES.ranch[id]?.(spriteLevel);
-        const drawn = drawCenteredGeneratedImage(spritePath, x + w / 2, y + h + 14, 172, 152, { locked: level <= 0 });
+        const drawn = drawCenteredGeneratedImage(spritePath, x + w / 2, y + h + 10, w * 1.18, h * 1.22, { locked: level <= 0 });
         if (drawn) {
-            drawRanchBuildingBadge(config, level);
+            drawRanchBuildingBadge(visualConfig, level);
             ctx.restore();
             return;
         }
@@ -862,7 +1105,7 @@ function drawRanchBuildings() {
         if (id === 'apiary') drawApiaryBuilding(x, y, w, h, level);
         if (id === 'pigpen') drawPigpenBuilding(x, y, w, h, level);
 
-        drawRanchBuildingBadge(config, level);
+        drawRanchBuildingBadge(visualConfig, level);
         ctx.restore();
     });
     ctx.textAlign = 'left';
@@ -996,11 +1239,6 @@ function drawRanchBuildingBadge(config, level) {
     ctx.font = 'bold 11px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(level > 0 ? `L${level}` : '锁', x + w - 25, y + h - 13);
-    ctx.fillStyle = level > 0 ? '#34495e' : '#7f8c8d';
-    ctx.font = 'bold 14px Arial';
-    ctx.fillText(config.name, x + w / 2, y + 18);
-    ctx.font = '12px Arial';
-    ctx.fillText(level > 0 ? `容量 ${getAnimalCapacity(config.animal)}` : `Lv.${config.reqLevel} 可建造`, x + w / 2, y + h - 36);
 }
 
 function drawAnimals() {
@@ -1047,19 +1285,6 @@ function drawWorkers() {
         }
         ctx.restore();
     }
-    if (getTalentLevel('industry') >= 4 && !workers.some(worker => worker.type === 'drone')) {
-        const t = getRenderNow() / 900;
-        const x = ranchStartX + 90 + Math.cos(t) * 24;
-        const y = ranchStartY + 74 + Math.sin(t) * 12;
-        if (drawGeneratedImage(GENERATED_SPRITES.workers.drone[Math.floor(getRenderNow() / 240) % 3], x - 27, y - 38, 54, 54, { alpha: 0.72 })) return;
-        ctx.fillStyle = '#95a5a6';
-        ctx.fillRect(x - 10, y - 8, 20, 16);
-        ctx.fillStyle = '#3498db';
-        ctx.fillRect(x - 4, y - 3, 8, 6);
-        ctx.fillStyle = '#263238';
-        ctx.fillRect(x - 16, y - 2, 6, 2);
-        ctx.fillRect(x + 10, y - 2, 6, 2);
-    }
 }
 
 function getWorkerSpritePath(worker) {
@@ -1078,8 +1303,9 @@ function getWorkerSpritePath(worker) {
 function drawVisitors() {
     const visitors = getVisitorIds();
     if (visitors.length === 0) return;
-    const baseX = ranchStartX + 26;
-    const baseY = ranchStartY + ranchHeight + 54;
+    const pastureRect = getPastureAreaLayout().rect;
+    const baseX = pastureRect.x + 26;
+    const baseY = pastureRect.y + pastureRect.h + 54;
     ctx.save();
     drawRoundRect(ctx, baseX - 14, baseY - 42, 292, 96, 10, 'rgba(248, 249, 244, 0.62)', 'rgba(96, 125, 111, 0.6)');
     ctx.fillStyle = 'rgba(52, 73, 94, 0.65)';
@@ -1091,16 +1317,28 @@ function drawVisitors() {
         const config = VISITOR_CONFIG[id];
         const unlocked = isVisitorUnlocked(id);
         const progress = unlocked ? getVisitorProgress(id) : { finished: false };
-        const x = baseX + (index % 4) * 66;
-        const y = baseY + 14 + Math.floor(index / 4) * 48;
+        const fallbackX = baseX + (index % 4) * 66;
+        const fallbackY = baseY + 14 + Math.floor(index / 4) * 48;
+        const avatarLayout = getNpcMapAvatarLayout(id, index, {
+            x: fallbackX - 10,
+            y: fallbackY - 20,
+            w: 38,
+            h: 48,
+            anchor: 'top-left'
+        });
+        const avatar = avatarLayout.rect;
+        const avatarCenterX = avatar.x + avatar.w / 2;
+        const x = avatarCenterX - 9;
+        const y = avatar.y + 20;
+        registerWorldLayoutDebugItem(`npc.${id}`, avatarLayout);
         ctx.save();
         ctx.fillStyle = 'rgba(60, 70, 64, 0.18)';
-        ctx.fillRect(x - 12, y + 24, 42, 8);
-        drawRoundRect(ctx, x - 10, y - 20, 38, 48, 7, !unlocked ? '#d8d1bf' : progress.finished ? '#dff4e6' : '#fff3cd', !unlocked ? '#8f8572' : progress.finished ? '#27ae60' : '#f39c12');
+        ctx.fillRect(avatar.x - 2, avatar.y + avatar.h - 4, avatar.w + 4, 8);
+        drawRoundRect(ctx, avatar.x, avatar.y, avatar.w, avatar.h, 7, !unlocked ? '#d8d1bf' : progress.finished ? '#dff4e6' : '#fff3cd', !unlocked ? '#8f8572' : progress.finished ? '#27ae60' : '#f39c12');
         ctx.fillStyle = '#263238';
         ctx.font = '22px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(config.icon, x + 9, y + 2);
+        ctx.fillText(config.icon, avatarCenterX, avatar.y + 22);
         ctx.font = 'bold 10px Arial';
         if (!unlocked) {
             ctx.fillText('未到', x + 9, y + 20);
@@ -1150,11 +1388,13 @@ function drawDroughtHeat() {
 }
 
 function drawTorchLights() {
+    const farmW = typeof getFarmVisualWidth === 'function' ? getFarmVisualWidth() : gridWidth;
+    const farmH = typeof getFarmVisualHeight === 'function' ? getFarmVisualHeight() : gridHeight;
     const torches = [
         [farmStartX - 10, farmStartY - 10],
-        [farmStartX + gridWidth + 10, farmStartY - 10],
-        [farmStartX - 10, farmStartY + gridHeight + 10],
-        [farmStartX + gridWidth + 10, farmStartY + gridHeight + 10]
+        [farmStartX + farmW + 10, farmStartY - 10],
+        [farmStartX - 10, farmStartY + farmH + 10],
+        [farmStartX + farmW + 10, farmStartY + farmH + 10]
     ];
     for (const [worldX, worldY] of torches) {
         const point = worldToScreen(worldX, worldY);

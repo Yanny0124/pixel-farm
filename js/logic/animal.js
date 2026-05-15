@@ -206,19 +206,22 @@ function steerAnimal(animal, targetX, targetY, speed) {
 }
 
 function updateBee(animal, now) {
+    const farmW = typeof getFarmVisualWidth === 'function' ? getFarmVisualWidth() : gridWidth;
+    const farmH = typeof getFarmVisualHeight === 'function' ? getFarmVisualHeight() : gridHeight;
     if (!animal.target || now > (animal.targetUntil || 0) || Math.hypot((animal.target.x || animal.x) - animal.x, (animal.target.y || animal.y) - animal.y) < 12) {
         animal.target = {
-            x: farmStartX + 18 + Math.random() * Math.max(1, gridWidth - 36),
-            y: farmStartY + 18 + Math.random() * Math.max(1, gridHeight - 36)
+            x: farmStartX + 18 + Math.random() * Math.max(1, farmW - 36),
+            y: farmStartY + 18 + Math.random() * Math.max(1, farmH - 36)
         };
         animal.targetUntil = now + 2600 + Math.random() * 2400;
     }
     steerAnimal(animal, animal.target.x, animal.target.y, 1.25);
-    animal.x = Math.max(farmStartX + 8, Math.min(farmStartX + gridWidth - 8, animal.x));
-    animal.y = Math.max(farmStartY + 8, Math.min(farmStartY + gridHeight - 8, animal.y));
+    animal.x = Math.max(farmStartX + 8, Math.min(farmStartX + farmW - 8, animal.x));
+    animal.y = Math.max(farmStartY + 8, Math.min(farmStartY + farmH - 8, animal.y));
 
-    const beeCol = Math.floor((animal.x - farmStartX) / TILE_SIZE);
-    const beeRow = Math.floor((animal.y - farmStartY) / TILE_SIZE);
+    const beeCell = typeof getFarmCellAtWorld === 'function' ? getFarmCellAtWorld(animal.x, animal.y) : null;
+    const beeCol = beeCell?.col ?? Math.floor((animal.x - farmStartX) / TILE_SIZE);
+    const beeRow = beeCell?.row ?? Math.floor((animal.y - farmStartY) / TILE_SIZE);
     for (let r = beeRow - 1; r <= beeRow + 1; r++) {
         for (let c = beeCol - 1; c <= beeCol + 1; c++) {
             if (r >= 0 && r < ROWS && c >= 0 && c < COLS && gridData[r][c].state === 1) {

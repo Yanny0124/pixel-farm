@@ -1,0 +1,62 @@
+[terrain]
+01_grass_lush.png	314x314
+02_grass_flowers.png	313x314
+03_dirt_compact.png	313x314
+04_soil_tilled.png	314x314
+05_soil_wet.png	314x313
+06_rice_paddy_mud.png	313x313
+07_stone_path_narrow.png	313x313
+08_cobblestone_road.png	314x313
+09_pond_bank.png	314x313
+10_river_bank_curve.png	313x313
+11_canal_bank_edge.png	313x313
+12_canal_bank_corner.png	314x313
+13_field_divider_strip.png	314x314
+14_fence_shadow_strip.png	313x314
+15_building_footprint_pad.png	313x314
+16_bridge_stone_crossing.png	314x314
+
+[irrigation_tiles]
+01_canal_horizontal.png	253x140
+02_canal_vertical.png	151x224
+03_canal_corner_left.png	234x207
+04_canal_corner_right.png	233x207
+05_canal_t_junction.png	261x196
+06_canal_t_up.png	259x185
+07_canal_cross.png	252x233
+08_canal_end_cap.png	202x137
+09_sluice_gate.png	260x227
+10_wood_plank_crossing.png	255x211
+11_stone_bridge_crossing.png	257x221
+12_field_side_trench.png	263x194
+13_canal_beside_soil_left.png	250x204
+14_canal_beside_soil_right.png	247x204
+15_canal_beside_soil_bottom.png	254x211
+16_canal_beside_soil_top.png	254x211
+
+[scene_props]
+01_tree_cluster_edge.png	343x244
+02_broad_tree.png	384x234
+03_conifer.png	384x226
+04_pond_corner_shore.png	343x174
+05_stone_bridge.png	344x256
+06_wood_fence_straight.png	384x235
+07_wood_fence_corner_gate.png	384x248
+08_stone_road_straight.png	348x248
+09_stone_road_corner.png	270x256
+10_dirt_road_strip.png	318x202
+11_haystack.png	333x215
+12_blank_signboard.png	279x212
+13_workshop_dirt_pad.png	336x208
+14_ranch_pasture_patch.png	381x212
+15_flower_bush_cluster.png	343x206
+16_barrel_crate_cluster.png	281x150
+
+[irrigation_stages]
+irrigation_stage_01.png	1138x1159
+irrigation_stage_02.png	1195x1184
+irrigation_stage_03.png	1142x1166
+irrigation_stage_04.png	1226x1114
+irrigation_stage_05.png	1217x1161
+irrigation_stage_06.png	1206x1170
+irrigation_stage_07.png	1254x1198
