@@ -44,7 +44,8 @@ function drawCropSprite(ctx, cropType, stage, x, y, cellSize) {
     const px = Math.floor(cellSize / 16);
     const ox = x + Math.floor((cellSize - px * 16) / 2);
     const oy = y + Math.floor((cellSize - px * 16) / 2);
-    const sway = Math.sin(Date.now() / 260 + x * 0.03 + y * 0.02) > 0 ? 1 : 0;
+    const now = typeof getRenderNow === 'function' ? getRenderNow() : Date.now();
+    const sway = Math.sin(now / 260 + x * 0.03 + y * 0.02) > 0 ? 1 : 0;
     const color = palette[Math.min(stage, palette.length - 1)];
 
     if (stage <= 0) {
@@ -152,7 +153,8 @@ function drawCropSprite(ctx, cropType, stage, x, y, cellSize) {
 
 function drawAnimalSprite(ctx, animal) {
     const palette = ANIMAL_PALETTES[animal.type] || ANIMAL_PALETTES.chicken;
-    const step = Math.sin(Date.now() / 160 + animal.x * 0.1) > 0 ? 1 : 0;
+    const now = typeof getRenderNow === 'function' ? getRenderNow() : Date.now();
+    const step = Math.sin(now / 160 + animal.x * 0.1) > 0 ? 1 : 0;
     const x = Math.round(animal.x);
     const y = Math.round(animal.y);
 
@@ -188,6 +190,31 @@ function drawAnimalSprite(ctx, animal) {
         ctx.fillRect(x - facing * 19, y - 8, 3, 10);
         ctx.fillStyle = '#fbfbf2';
         ctx.fillRect(x + facing * 15, y - 12, 2, 2);
+        return;
+    }
+
+    if (animal.type === 'chicken') {
+        const right = animal.vx >= 0;
+        ctx.fillStyle = 'rgba(58, 42, 30, 0.16)';
+        ctx.fillRect(x - 7, y + 8, 14, 4);
+        ctx.fillStyle = '#fff3c8';
+        ctx.fillRect(x - 7, y - 7, 14, 14);
+        ctx.fillRect(x - 5, y - 9, 10, 18);
+        ctx.fillStyle = '#f8d98a';
+        ctx.fillRect(right ? x - 3 : x, y - 2, 4, 6);
+        ctx.fillStyle = '#f39c12';
+        if (right) {
+            ctx.fillRect(x + 6, y - 4, 4, 3);
+        } else {
+            ctx.fillRect(x - 10, y - 4, 4, 3);
+        }
+        ctx.fillStyle = '#3b3025';
+        ctx.fillRect(right ? x + 3 : x - 5, y - 5, 2, 2);
+        ctx.fillStyle = '#d94b38';
+        ctx.fillRect(x - 1, y - 12, 3, 3);
+        ctx.fillStyle = '#8c6239';
+        ctx.fillRect(x - 4, y + 6 + step, 2, 5);
+        ctx.fillRect(x + 3, y + 6 - step, 2, 5);
         return;
     }
 

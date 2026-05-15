@@ -8,10 +8,22 @@ body {
 body { 
     margin: 0; 
     padding: 0; 
-    background-color: #2c3e50; 
+    background:
+        radial-gradient(circle at 28% 18%, rgba(255, 247, 210, 0.22), transparent 28%),
+        linear-gradient(180deg, #8fb58b 0%, #5f8268 58%, #3f604b 100%);
     display: grid; 
     place-items: center; 
     font-family: sans-serif; 
+    --farm-ink: #3f2f24;
+    --farm-wood: #704327;
+    --farm-wood-soft: #9d6c3a;
+    --farm-paper: #fff8df;
+    --farm-paper-deep: #f1ddb0;
+    --farm-gold: #f3c86f;
+    --farm-gold-light: #ffd675;
+    --farm-leaf: #7f9f67;
+    --farm-leaf-dark: #587456;
+    --farm-red: #d96b4b;
 }
 
 .main-layout { 
@@ -30,15 +42,2743 @@ body {
     flex-direction: column; 
     align-items: center; 
     gap: 0; 
+    position: relative;
+    width: min(100vw, calc(100vh * 16 / 9));
+    height: min(100vh, calc(100vw * 9 / 16));
 }
 
 /* ================== 画布 ================== */
 canvas { 
-    background-color: #e8f5e9; 
-    box-shadow: 0 0 20px rgba(0,0,0,0.5); 
+    background-color: #eaf3df; 
+    box-shadow: 0 14px 34px rgba(47, 70, 48, 0.38); 
     image-rendering: pixelated; 
     border-radius: 4px; 
     display: block;
-    width: min(100vw, calc(100vh * 16 / 9));
-    height: min(100vh, calc(100vw * 9 / 16));
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    user-select: none;
+}
+
+.bitcn-nav {
+    position: absolute;
+    left: 50%;
+    bottom: 16px;
+    z-index: 4;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(118px, 154px));
+    gap: 20px;
+    transform: translateX(-50%);
+    pointer-events: auto;
+}
+
+.bitcn-status {
+    position: absolute;
+    left: 50%;
+    top: 14px;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: calc(100% - 64px);
+    padding: 8px 12px;
+    transform: translateX(-50%);
+    pointer-events: auto;
+    background: rgba(255, 248, 223, 0.96);
+    border-top: 5px solid var(--farm-wood);
+    border-bottom: 5px solid var(--farm-wood);
+    box-shadow:
+        -5px 0 0 var(--farm-wood),
+        5px 0 0 var(--farm-wood),
+        5px 5px 0 rgba(54, 36, 24, 0.18);
+}
+
+.bitcn-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    color: var(--farm-ink);
+    font: 800 13px Arial, sans-serif;
+}
+
+.bitcn-status-chip canvas {
+    width: 16px;
+    height: 16px;
+    box-shadow: none;
+    background: transparent;
+}
+
+.bitcn-status-button {
+    min-width: 64px;
+    height: 30px;
+    padding: 0 8px;
+    font-size: 12px;
+}
+
+.bitcn-support-button {
+    --bitcn-fill: #f6c766;
+    --bitcn-fill-hover: #ffda82;
+}
+
+.bitcn-nav.is-hidden {
+    display: none;
+}
+
+.bitcn-button {
+    --bitcn-fill: var(--farm-gold);
+    --bitcn-fill-hover: var(--farm-gold-light);
+    --bitcn-border: var(--farm-wood);
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-width: 128px;
+    height: 46px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 0;
+    background: var(--bitcn-border);
+    color: var(--farm-ink);
+    font: 700 16px Arial, sans-serif;
+    cursor: pointer;
+    image-rendering: pixelated;
+    transition: transform 120ms ease;
+    clip-path: polygon(8px 0, calc(100% - 8px) 0, calc(100% - 8px) 4px, 100% 4px, 100% calc(100% - 8px), calc(100% - 8px) calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 8px calc(100% - 4px), 0 calc(100% - 4px), 0 8px, 4px 8px, 4px 4px, 8px 4px);
+    filter: drop-shadow(5px 5px 0 rgba(54, 36, 24, 0.22));
+    box-shadow: none;
+}
+
+.bitcn-button::before {
+    content: "";
+    position: absolute;
+    inset: 5px;
+    background: var(--bitcn-fill);
+    clip-path: polygon(5px 0, calc(100% - 5px) 0, calc(100% - 5px) 3px, 100% 3px, 100% calc(100% - 5px), calc(100% - 5px) calc(100% - 5px), calc(100% - 5px) 100%, 5px 100%, 5px calc(100% - 3px), 0 calc(100% - 3px), 0 5px, 3px 5px, 3px 3px, 5px 3px);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.bitcn-button::after {
+    content: "";
+    position: absolute;
+    inset: 8px 12px;
+    pointer-events: none;
+    z-index: 1;
+    box-shadow:
+        inset 0 4px 0 rgba(255, 255, 255, 0.28),
+        inset 0 -5px 0 rgba(92, 55, 31, 0.16);
+}
+
+.bitcn-button:hover,
+.bitcn-button.is-active {
+    --bitcn-fill: var(--bitcn-fill-hover);
+}
+
+.bitcn-button:active {
+    transform: translateY(4px);
+    filter: drop-shadow(1px 1px 0 rgba(54, 36, 24, 0.30));
+}
+
+.bitcn-button:disabled {
+    filter: grayscale(0.35);
+    opacity: 0.62;
+    cursor: default;
+}
+
+.bitcn-nav-icon {
+    position: relative;
+    z-index: 2;
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    display: block;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
+    touch-action: auto;
+    user-select: none;
+    image-rendering: pixelated;
+}
+
+.bitcn-nav-emoji {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    line-height: 1;
+    image-rendering: auto;
+}
+
+.bitcn-button-label {
+    position: relative;
+    z-index: 2;
+}
+
+.bitcn-piece {
+    position: absolute;
+    pointer-events: none;
+    background: #6f3d25;
+}
+
+.bitcn-button .bitcn-piece {
+    display: none;
+}
+
+.bitcn-top-left-line {
+    top: -6px;
+    left: 18px;
+    width: calc(50% - 18px);
+    height: 6px;
+}
+
+.bitcn-top-right-line {
+    top: -6px;
+    right: 18px;
+    width: calc(50% - 18px);
+    height: 6px;
+}
+
+.bitcn-bottom-left-line {
+    bottom: -6px;
+    left: 18px;
+    width: calc(50% - 18px);
+    height: 6px;
+}
+
+.bitcn-bottom-right-line {
+    right: 18px;
+    bottom: -6px;
+    width: calc(50% - 18px);
+    height: 6px;
+}
+
+.bitcn-corner-tl,
+.bitcn-corner-tr,
+.bitcn-corner-bl,
+.bitcn-corner-br {
+    width: 6px;
+    height: 6px;
+}
+
+.bitcn-corner-tl {
+    top: 0;
+    left: 0;
+}
+
+.bitcn-corner-tr {
+    top: 0;
+    right: 0;
+}
+
+.bitcn-corner-bl {
+    bottom: 0;
+    left: 0;
+}
+
+.bitcn-corner-br {
+    right: 0;
+    bottom: 0;
+}
+
+.bitcn-side-left {
+    top: 6px;
+    left: -6px;
+    width: 6px;
+    height: calc(100% - 12px);
+}
+
+.bitcn-side-right {
+    top: 6px;
+    right: -6px;
+    width: 6px;
+    height: calc(100% - 12px);
+}
+
+.bitcn-shade-top {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.24);
+}
+
+.bitcn-shade-top-stub {
+    top: 6px;
+    left: 0;
+    width: 12px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.24);
+}
+
+.bitcn-shade-bottom {
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    background: rgba(92, 55, 31, 0.18);
+}
+
+.bitcn-shade-bottom-stub {
+    right: 0;
+    bottom: 6px;
+    width: 12px;
+    height: 6px;
+    background: rgba(92, 55, 31, 0.18);
+}
+
+.bitcn-panel {
+    position: absolute;
+    z-index: 8;
+    display: none;
+    pointer-events: auto;
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.14), transparent 18%, transparent 82%, rgba(112, 67, 39, 0.05)),
+        var(--farm-paper);
+    color: var(--farm-ink);
+    border-top: 6px solid var(--farm-wood);
+    border-bottom: 6px solid var(--farm-wood);
+    box-shadow:
+        -6px 0 0 var(--farm-wood),
+        6px 0 0 var(--farm-wood),
+        8px 8px 0 rgba(54, 36, 24, 0.22);
+    image-rendering: pixelated;
+    overscroll-behavior: contain;
+}
+
+.bitcn-modal-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 7;
+    display: none;
+    pointer-events: auto;
+    background: rgba(55, 36, 22, 0.18);
+}
+
+.bitcn-modal-scrim.is-open {
+    display: block;
+}
+
+.bitcn-support-modal {
+    position: absolute;
+    inset: 0;
+    z-index: 90;
+    display: none;
+    pointer-events: none;
+}
+
+.bitcn-support-modal.is-open {
+    display: block;
+    pointer-events: auto;
+}
+
+.bitcn-support-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(55, 36, 22, 0.34);
+}
+
+.bitcn-support-card {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(520px, calc(100% - 36px));
+    transform: translate(-50%, -50%);
+    padding: 18px;
+    color: var(--farm-ink);
+    background: var(--farm-paper);
+    border-top: 6px solid var(--farm-wood);
+    border-bottom: 6px solid var(--farm-wood);
+    box-shadow:
+        -6px 0 0 var(--farm-wood),
+        6px 0 0 var(--farm-wood),
+        8px 8px 0 rgba(54, 36, 24, 0.22);
+}
+
+.bitcn-support-body {
+    display: grid;
+    gap: 10px;
+    margin: 8px 4px 16px;
+}
+
+.bitcn-support-body p {
+    margin: 0;
+    color: #5d4935;
+    font: 800 15px/1.65 Arial, sans-serif;
+}
+
+.bitcn-panel.is-open {
+    display: block;
+}
+
+.bitcn-market-panel {
+    left: 50%;
+    top: 10%;
+    width: min(78%, 1060px);
+    max-height: calc(100% - 150px);
+    transform: translateX(-50%);
+    padding: 18px;
+    overflow: hidden;
+}
+
+.bitcn-settings-panel {
+    right: 3.2%;
+    top: 7.5%;
+    width: min(500px, 88%);
+    padding: 18px;
+    z-index: 12;
+    max-height: calc(100% - 120px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: var(--farm-leaf) #ead9ad;
+    scrollbar-width: thin;
+}
+
+.bitcn-app-panel {
+    left: 50%;
+    top: 6.5%;
+    width: min(88%, 1320px);
+    height: min(78%, 720px);
+    transform: translateX(-50%);
+    padding: 18px;
+    z-index: 9;
+    overflow: hidden;
+}
+
+.bitcn-app-panel.is-open {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.bitcn-panel-header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    background: var(--farm-leaf);
+    color: var(--farm-paper);
+    box-shadow: inset 0 -4px 0 rgba(63, 47, 36, 0.16);
+    border-left: 6px solid rgba(255, 255, 255, 0.18);
+    border-right: 6px solid rgba(63, 47, 36, 0.12);
+}
+
+.bitcn-panel-header strong {
+    font: 800 22px Arial, sans-serif;
+}
+
+.bitcn-panel-header span {
+    opacity: 0.86;
+    font: 700 13px Arial, sans-serif;
+}
+
+.bitcn-close-button {
+    --bitcn-fill: var(--farm-red);
+    --bitcn-fill-hover: #e17759;
+    min-width: 42px;
+    height: 32px;
+    padding: 0;
+    color: #fff8df;
+}
+
+.bitcn-settings-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.bitcn-stat-chip {
+    display: grid;
+    gap: 5px;
+    min-height: 52px;
+    padding: 10px 12px;
+    background: #fffdf0;
+    border-top: 5px solid #c49b55;
+    border-bottom: 5px solid #c49b55;
+    box-shadow:
+        -5px 0 0 #c49b55,
+        5px 0 0 #c49b55,
+        4px 4px 0 rgba(54, 36, 24, 0.10);
+}
+
+.bitcn-stat-chip span {
+    color: #77644c;
+    font: 700 12px Arial, sans-serif;
+}
+
+.bitcn-stat-chip strong {
+    color: var(--farm-ink);
+    font: 800 18px Arial, sans-serif;
+}
+
+.bitcn-settings-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.bitcn-settings-button {
+    width: 100%;
+    min-width: 0;
+    height: 46px;
+}
+
+.bitcn-settings-button.is-danger {
+    grid-column: 2;
+    --bitcn-fill: var(--farm-red);
+    --bitcn-fill-hover: #e17759;
+    color: var(--farm-paper);
+}
+
+.bitcn-settings-note {
+    margin: 16px 4px 2px;
+    color: #77644c;
+    font: 700 13px Arial, sans-serif;
+}
+
+.bitcn-app-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 0 0 16px;
+    padding: 2px 4px;
+}
+
+.bitcn-app-tabs.is-sub {
+    margin-top: 12px;
+    margin-bottom: 12px;
+}
+
+.bitcn-panel-tab {
+    --bitcn-fill: #fff2c4;
+    --bitcn-fill-hover: var(--farm-gold-light);
+    min-width: 96px;
+    height: 38px;
+    padding: 0 14px;
+    font-size: 14px;
+}
+
+.bitcn-panel-tab.is-active {
+    --bitcn-fill: var(--farm-gold-light);
+}
+
+.bitcn-app-content {
+    min-height: 0;
+    height: auto;
+    overflow-y: auto;
+    padding: 4px 12px 16px 4px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    scrollbar-color: var(--farm-leaf) #ead9ad;
+    scrollbar-width: thin;
+    contain: layout paint;
+}
+
+.bitcn-summary-card,
+.bitcn-item-card,
+.bitcn-reward-card,
+.bitcn-build-card {
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 24%),
+        #fffdf0;
+    border-top: 5px solid #c49b55;
+    border-bottom: 5px solid #c49b55;
+    box-shadow:
+        -5px 0 0 #c49b55,
+        5px 0 0 #c49b55,
+        5px 5px 0 rgba(54, 36, 24, 0.12);
+}
+
+.bitcn-summary-card {
+    display: grid;
+    gap: 8px;
+    margin: 0 2px 16px;
+    padding: 14px 18px;
+}
+
+.bitcn-summary-card strong {
+    font: 800 20px Arial, sans-serif;
+}
+
+.bitcn-summary-card span {
+    color: #77644c;
+    font: 700 14px Arial, sans-serif;
+}
+
+.bitcn-progress {
+    height: 14px;
+    padding: 4px;
+    background: #e4dcc5;
+    box-shadow:
+        inset 0 -3px 0 rgba(63, 47, 36, 0.10),
+        0 -3px 0 #bda16a,
+        0 3px 0 #bda16a,
+        -3px 0 0 #bda16a,
+        3px 0 0 #bda16a;
+}
+
+.bitcn-progress i {
+    display: block;
+    height: 100%;
+    background: var(--farm-leaf);
+}
+
+.bitcn-section-title {
+    margin: 18px 0 12px;
+    color: var(--farm-ink);
+    font: 800 17px Arial, sans-serif;
+}
+
+.bitcn-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.bitcn-reward-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.bitcn-item-card {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    grid-template-rows: auto 1fr;
+    gap: 7px 12px;
+    min-height: 94px;
+    padding: 14px;
+    color: var(--farm-ink);
+    text-align: left;
+}
+
+button.bitcn-item-card {
+    border-left: 0;
+    border-right: 0;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+}
+
+.bitcn-item-card b {
+    grid-row: span 2;
+    font-size: 28px;
+    line-height: 1;
+}
+
+.bitcn-item-card strong {
+    font: 800 17px Arial, sans-serif;
+}
+
+.bitcn-item-card span {
+    color: #77644c;
+    font: 700 13px/1.35 Arial, sans-serif;
+}
+
+.bitcn-item-card.is-locked {
+    filter: grayscale(0.45);
+    opacity: 0.66;
+}
+
+.bitcn-select-card:not(:disabled):hover,
+.bitcn-reward-card.is-ready,
+.bitcn-build-card:hover {
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.20), transparent 24%),
+        #fff2c4;
+}
+
+.bitcn-reward-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    min-height: 72px;
+    padding: 12px 14px;
+}
+
+.bitcn-reward-card div,
+.bitcn-build-card > div:first-child {
+    display: grid;
+    gap: 6px;
+}
+
+.bitcn-reward-card strong,
+.bitcn-build-card strong {
+    font: 800 16px Arial, sans-serif;
+}
+
+.bitcn-reward-card span,
+.bitcn-build-card span,
+.bitcn-build-card small {
+    color: #77644c;
+    font: 700 13px/1.35 Arial, sans-serif;
+}
+
+.bitcn-mini-button {
+    min-width: 68px;
+    height: 34px;
+    padding: 0 10px;
+    font-size: 13px;
+}
+
+.bitcn-list {
+    display: grid;
+    gap: 16px;
+}
+
+.bitcn-compact-list {
+    gap: 10px;
+}
+
+.bitcn-letter-layout,
+.bitcn-visitor-layout {
+    display: grid;
+    grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+    gap: 18px;
+    min-height: 100%;
+}
+
+.bitcn-letter-list,
+.bitcn-visitor-list {
+    display: grid;
+    align-content: start;
+    gap: 10px;
+    max-height: calc(100vh - 260px);
+    overflow-y: auto;
+    padding: 4px 8px 8px 4px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    scrollbar-color: var(--farm-leaf) #ead9ad;
+    scrollbar-width: thin;
+}
+
+.bitcn-letter-button {
+    min-height: 42px;
+    padding: 8px 10px;
+    color: #3f2f24;
+    font: 800 14px/1.25 Arial, sans-serif;
+    text-align: left;
+    cursor: pointer;
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent 32%),
+        #fff2c4;
+    border: 0;
+    box-shadow:
+        inset 0 -3px 0 rgba(92, 55, 31, 0.10),
+        0 -4px 0 #7b4a2d,
+        0 4px 0 #7b4a2d,
+        -4px 0 0 #7b4a2d,
+        4px 0 0 #7b4a2d,
+        4px 4px 0 rgba(54, 36, 24, 0.14);
+}
+
+.bitcn-letter-button:hover,
+.bitcn-letter-button.is-active {
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.28), transparent 32%),
+        #ffd675;
+}
+
+.bitcn-letter-button:disabled {
+    cursor: default;
+    color: #887d6b;
+    filter: grayscale(0.4);
+    opacity: 0.7;
+}
+
+.bitcn-letter-button.is-disabled {
+    cursor: default;
+    color: #887d6b;
+    filter: grayscale(0.4);
+    opacity: 0.7;
+}
+
+.bitcn-letter-detail,
+.bitcn-visitor-detail {
+    min-height: 360px;
+    padding: 22px;
+    color: var(--farm-ink);
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 24%),
+        #fffdf0;
+    border-top: 5px solid #c49b55;
+    border-bottom: 5px solid #c49b55;
+    box-shadow:
+        -5px 0 0 #c49b55,
+        5px 0 0 #c49b55,
+        5px 5px 0 rgba(54, 36, 24, 0.12);
+}
+
+.bitcn-letter-detail > strong,
+.bitcn-visitor-detail > strong {
+    display: block;
+    margin-bottom: 14px;
+    font: 900 22px Arial, sans-serif;
+}
+
+.bitcn-letter-detail p,
+.bitcn-visitor-detail p {
+    margin: 0 0 12px;
+    color: #5d513f;
+    font: 700 15px/1.7 Arial, sans-serif;
+}
+
+.bitcn-button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 16px 0 12px;
+}
+
+.bitcn-dialog-box {
+    margin-top: 16px;
+    padding: 14px 16px;
+    color: #4d3b2b;
+    font: 800 15px/1.65 Arial, sans-serif;
+    background: #fff2c4;
+    box-shadow:
+        0 -4px 0 #c49b55,
+        0 4px 0 #c49b55,
+        -4px 0 0 #c49b55,
+        4px 0 0 #c49b55;
+}
+
+.bitcn-visitor-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.bitcn-visitor-top {
+    display: grid;
+    grid-template-columns: minmax(132px, 190px) minmax(0, 1fr);
+    gap: 18px;
+    align-items: end;
+}
+
+.bitcn-visitor-portrait {
+    position: relative;
+    display: grid;
+    place-items: end center;
+    aspect-ratio: 3 / 4;
+    min-height: 260px;
+    overflow: hidden;
+    background:
+        repeating-linear-gradient(0deg, rgba(58, 103, 48, 0.22) 0 8px, transparent 8px 16px),
+        repeating-linear-gradient(90deg, rgba(255, 241, 161, 0.12) 0 8px, transparent 8px 16px),
+        linear-gradient(180deg, #7faf5f 0 52%, #6f9f4f 52% 64%, #8b6540 64% 70%, #78a957 70% 100%);
+    box-shadow:
+        inset 0 -5px 0 rgba(94, 61, 34, 0.14),
+        0 -4px 0 #c49b55,
+        0 4px 0 #c49b55,
+        -4px 0 0 #c49b55,
+        4px 0 0 #c49b55;
+}
+
+.bitcn-visitor-portrait::before,
+.bitcn-visitor-portrait::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.bitcn-visitor-portrait::before {
+    background:
+        linear-gradient(90deg, transparent 0 18%, rgba(85, 61, 35, 0.22) 18% 22%, transparent 22% 46%, rgba(85, 61, 35, 0.18) 46% 50%, transparent 50% 76%, rgba(85, 61, 35, 0.18) 76% 80%, transparent 80%),
+        linear-gradient(0deg, rgba(255, 255, 255, 0.12), transparent 38%);
+    image-rendering: pixelated;
+}
+
+.bitcn-visitor-portrait::after {
+    background:
+        repeating-linear-gradient(45deg, transparent 0 18px, rgba(255, 241, 161, 0.18) 18px 22px, transparent 22px 38px);
+    opacity: 0.35;
+}
+
+.bitcn-visitor-portrait img {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    object-position: center bottom;
+    image-rendering: pixelated;
+}
+
+.bitcn-visitor-portrait span {
+    position: relative;
+    z-index: 1;
+    margin: auto;
+    color: rgba(58, 47, 35, 0.74);
+    text-shadow: 0 3px 0 rgba(255, 242, 196, 0.42);
+    font: 900 64px/1 Arial, sans-serif;
+}
+
+.bitcn-visitor-portrait.is-locked {
+    min-height: 220px;
+    filter: saturate(0.75);
+    opacity: 0.88;
+}
+
+.bitcn-visitor-meta {
+    min-width: 0;
+}
+
+.bitcn-visitor-meta > strong {
+    display: block;
+    font: 900 24px/1.2 Arial, sans-serif;
+}
+
+.bitcn-visitor-meta > span {
+    display: block;
+    margin: 4px 0 12px;
+    color: #8a5e38;
+    font: 900 14px/1.3 Arial, sans-serif;
+}
+
+.bitcn-affection-box {
+    display: grid;
+    gap: 7px;
+    margin-top: 14px;
+}
+
+.bitcn-affection-label {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    color: #594433;
+    font: 900 13px/1.2 Arial, sans-serif;
+}
+
+.bitcn-affection-track {
+    height: 16px;
+    padding: 3px;
+    background: #ead9ad;
+    box-shadow:
+        inset 0 0 0 2px #8a5e38,
+        0 3px 0 rgba(54, 36, 24, 0.12);
+}
+
+.bitcn-affection-track span {
+    display: block;
+    height: 100%;
+    min-width: 4px;
+    background: linear-gradient(90deg, #e46b61, #f6b35f);
+}
+
+.bitcn-visitor-need {
+    padding: 10px 12px;
+    background: rgba(234, 217, 173, 0.42);
+}
+
+.bitcn-visitor-dialog {
+    margin-top: auto;
+    min-height: 86px;
+}
+
+.bitcn-npc-arrival-modal {
+    position: absolute;
+    inset: 0;
+    z-index: 86;
+    display: none;
+    pointer-events: none;
+}
+
+.bitcn-npc-arrival-modal.is-open {
+    display: block;
+    pointer-events: auto;
+}
+
+.bitcn-npc-arrival-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(34, 26, 18, 0.34);
+}
+
+.bitcn-npc-arrival-card {
+    position: absolute;
+    left: 50%;
+    bottom: 8%;
+    display: grid;
+    grid-template-columns: minmax(120px, 178px) minmax(0, 1fr);
+    gap: 18px;
+    width: min(780px, calc(100% - 44px));
+    min-height: 210px;
+    padding: 18px 20px 20px;
+    transform: translateX(-50%);
+    color: var(--farm-ink);
+    background: #fffdf0;
+    border-top: 5px solid #7b4a2d;
+    border-bottom: 5px solid #7b4a2d;
+    box-shadow:
+        -5px 0 0 #7b4a2d,
+        5px 0 0 #7b4a2d,
+        8px 8px 0 rgba(38, 25, 16, 0.22);
+}
+
+.bitcn-npc-arrival-card .bitcn-visitor-portrait {
+    min-height: 176px;
+}
+
+.bitcn-npc-arrival-card .bitcn-visitor-portrait img {
+    max-height: 230px;
+}
+
+.bitcn-npc-arrival-body {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.bitcn-npc-arrival-body strong {
+    font: 900 23px/1.25 Arial, sans-serif;
+}
+
+.bitcn-npc-arrival-body > span {
+    margin: 4px 0 10px;
+    color: #8a5e38;
+    font: 900 14px/1.3 Arial, sans-serif;
+}
+
+.bitcn-npc-arrival-body p {
+    flex: 1;
+    margin: 0;
+    color: #5d513f;
+    font: 800 16px/1.65 Arial, sans-serif;
+}
+
+.bitcn-build-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    min-height: 86px;
+    padding: 14px 16px;
+}
+
+button.bitcn-build-card {
+    width: 100%;
+    border-left: 0;
+    border-right: 0;
+    color: var(--farm-ink);
+    font-family: Arial, sans-serif;
+    text-align: left;
+    cursor: pointer;
+}
+
+button.bitcn-build-card:disabled {
+    cursor: default;
+}
+
+.bitcn-ending-card {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.bitcn-ending-card.is-unread {
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent 24%),
+        #fff2c4;
+}
+
+.bitcn-build-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.bitcn-market-list {
+    display: grid;
+    gap: 12px;
+    max-height: min(590px, calc(100vh - 285px));
+    overflow-y: auto;
+    padding: 4px 8px 8px 4px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    scrollbar-color: var(--farm-leaf) #ead9ad;
+    scrollbar-width: thin;
+    contain: layout paint;
+}
+
+.bitcn-market-detail {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: minmax(180px, 280px) minmax(0, 1fr);
+    gap: 14px;
+    align-items: stretch;
+    margin: 0 4px 14px;
+    padding: 12px;
+    background: #fff6d7;
+    border-top: 5px solid #b98c49;
+    border-bottom: 5px solid #b98c49;
+    box-shadow:
+        -5px 0 0 #b98c49,
+        5px 0 0 #b98c49,
+        5px 5px 0 rgba(54, 36, 24, 0.12);
+}
+
+.bitcn-market-detail-info {
+    display: grid;
+    align-content: center;
+    gap: 8px;
+}
+
+.bitcn-market-detail-info strong {
+    font: 800 18px Arial, sans-serif;
+}
+
+.bitcn-market-detail-info span {
+    color: #6d5b43;
+    font: 700 13px Arial, sans-serif;
+    line-height: 1.45;
+}
+
+.bitcn-market-chart {
+    width: 100%;
+    height: 180px;
+    background: #fff8dc;
+    box-shadow:
+        inset 0 -4px 0 rgba(90, 65, 38, 0.10),
+        0 -4px 0 #d0a45b,
+        0 4px 0 #d0a45b,
+        -4px 0 0 #d0a45b,
+        4px 0 0 #d0a45b;
+}
+
+.bitcn-market-card {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    min-height: 72px;
+    padding: 12px;
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 22%),
+        #fffdf0;
+    border-top: 5px solid #c49b55;
+    border-bottom: 5px solid #c49b55;
+    box-shadow:
+        -5px 0 0 #c49b55,
+        5px 0 0 #c49b55,
+        5px 5px 0 rgba(54, 36, 24, 0.12);
+    cursor: pointer;
+}
+
+.bitcn-market-card.is-disabled {
+    opacity: 0.7;
+}
+
+.bitcn-market-card.is-active {
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.20), transparent 22%),
+        #fff4c8;
+    border-top-color: #8ca65d;
+    border-bottom-color: #8ca65d;
+    box-shadow:
+        -5px 0 0 #8ca65d,
+        5px 0 0 #8ca65d,
+        5px 5px 0 rgba(54, 36, 24, 0.12);
+}
+
+.bitcn-market-meta {
+    display: grid;
+    gap: 7px;
+}
+
+.bitcn-market-meta strong {
+    font: 800 18px Arial, sans-serif;
+}
+
+.bitcn-market-meta span {
+    color: #77644c;
+    font: 700 13px Arial, sans-serif;
+}
+
+.bitcn-market-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.bitcn-action-button {
+    --bitcn-fill: var(--farm-gold);
+    --bitcn-fill-hover: var(--farm-gold-light);
+    min-width: 42px;
+    height: 34px;
+    padding: 0 10px;
+    color: #3f2f24;
+    font-size: 14px;
+}
+
+.bitcn-wide-button {
+    min-width: 68px;
+}
+
+.bitcn-sell-button {
+    min-width: 72px;
+    --bitcn-fill: #ffd675;
+    --bitcn-fill-hover: #ffe18d;
+}
+
+.bitcn-market-input {
+    width: 70px;
+    height: 34px;
+    box-sizing: border-box;
+    border: 0;
+    background: #fffdf0;
+    color: var(--farm-ink);
+    font: 800 16px Arial, sans-serif;
+    text-align: center;
+    outline: none;
+    box-shadow:
+        inset 0 -4px 0 rgba(63, 47, 36, 0.10),
+        0 -4px 0 #c19955,
+        0 4px 0 #c19955,
+        -4px 0 0 #c19955,
+        4px 0 0 #c19955;
+}
+
+.bitcn-market-input:focus {
+    border-color: #7f9f67;
+}
+
+.bitcn-empty {
+    margin: 16px;
+    color: #77644c;
+    font: 700 15px Arial, sans-serif;
+}
+
+.bitcn-side-dock {
+    position: absolute;
+    left: 18px;
+    top: 72px;
+    z-index: 4;
+    display: grid;
+    gap: 14px;
+    width: 188px;
+    pointer-events: auto;
+}
+
+.bitcn-order-dock {
+    position: absolute;
+    right: 18px;
+    top: 118px;
+    z-index: 4;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 12px;
+    width: 330px;
+    max-height: calc(100% - 230px);
+    padding: 14px;
+    pointer-events: auto;
+    overflow: hidden;
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.14), transparent 24%),
+        rgba(255, 248, 223, 0.96);
+    border-top: 5px solid #c49b55;
+    border-bottom: 5px solid #c49b55;
+    box-shadow:
+        -5px 0 0 #c49b55,
+        5px 0 0 #c49b55,
+        6px 6px 0 rgba(54, 36, 24, 0.16);
+}
+
+.bitcn-order-dock.is-hidden {
+    display: none;
+}
+
+.bitcn-order-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 10px;
+    background: var(--farm-wood-soft);
+    color: var(--farm-paper);
+    box-shadow: inset 0 -4px 0 rgba(63, 47, 36, 0.14);
+}
+
+.bitcn-order-header strong {
+    color: var(--farm-paper);
+    font: 800 18px Arial, sans-serif;
+}
+
+.bitcn-order-list {
+    display: grid;
+    gap: 12px;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 4px 6px 4px 0;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    scrollbar-color: var(--farm-leaf) #ead9ad;
+    scrollbar-width: thin;
+    contain: layout paint;
+}
+
+.bitcn-order-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    min-height: 58px;
+    padding: 10px 12px;
+    background: #fffdf0;
+    border-top: 4px solid #c49b55;
+    border-bottom: 4px solid #c49b55;
+    box-shadow:
+        -4px 0 0 #c49b55,
+        4px 0 0 #c49b55,
+        4px 4px 0 rgba(54, 36, 24, 0.10);
+}
+
+.bitcn-order-card.is-ready {
+    background: #fff2c4;
+}
+
+.bitcn-order-card div {
+    display: grid;
+    gap: 5px;
+}
+
+.bitcn-order-card strong {
+    color: var(--farm-ink);
+    font: 800 14px Arial, sans-serif;
+}
+
+.bitcn-order-card span {
+    color: #77644c;
+    font: 700 12px Arial, sans-serif;
+}
+
+.bitcn-side-dock.is-hidden {
+    display: none;
+}
+
+.bitcn-side-card {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.14), transparent 28%),
+        rgba(255, 248, 223, 0.95);
+    border-top: 5px solid #c49b55;
+    border-bottom: 5px solid #c49b55;
+    box-shadow:
+        -5px 0 0 #c49b55,
+        5px 0 0 #c49b55,
+        6px 6px 0 rgba(54, 36, 24, 0.16);
+}
+
+.bitcn-side-card > strong {
+    color: #3f2f24;
+    font: 800 15px Arial, sans-serif;
+    text-align: center;
+}
+
+.bitcn-side-button {
+    --bitcn-fill: #f3c86f;
+    width: 100%;
+    min-width: 0;
+    height: 42px;
+    padding: 0 8px;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.bitcn-side-button.is-cooling {
+    --bitcn-fill: #c7bda1;
+    --bitcn-fill-hover: #c7bda1;
+}
+
+.bitcn-zoom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.bitcn-reset-zoom {
+    --bitcn-fill: #fff2c4;
+}
+
+.bitcn-floating-control {
+    --bitcn-fill: var(--farm-gold);
+    position: absolute;
+    min-width: 0;
+    min-height: 0;
+    padding: 0 8px;
+    pointer-events: auto;
+    color: #3f2f24;
+    font-size: clamp(10px, 1vw, 14px);
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.bitcn-floating-control.is-active {
+    --bitcn-fill: var(--farm-gold-light);
+}
+
+.bitcn-floating-control.is-danger {
+    --bitcn-fill: var(--farm-red);
+    --bitcn-fill-hover: #e17759;
+    color: #fff8df;
+}
+
+.bitcn-floating-control.is-compact {
+    padding: 0 4px;
+    font-size: clamp(10px, 0.9vw, 13px);
+}
+
+.bitcn-floating-control.is-tab {
+    --bitcn-fill: #fff2c4;
+    --bitcn-border: #7b4a2d;
+    filter: drop-shadow(4px 4px 0 rgba(74, 50, 30, 0.16));
+}
+
+.bitcn-floating-control.is-tab.is-active {
+    --bitcn-fill: #ffd675;
+}
+
+.bitcn-floating-control .bitcn-piece {
+    transform: none;
+    transform-origin: center;
+}
+
+.bitcn-floating-control:not(.is-tab) {
+    filter: drop-shadow(3px 3px 0 rgba(74, 50, 30, 0.20));
+}
+
+.bitcn-floating-control:not(.is-tab)::after {
+    inset: 7px 10px;
+    box-shadow:
+        inset 0 3px 0 rgba(255, 255, 255, 0.20),
+        inset 0 -3px 0 rgba(92, 55, 31, 0.12);
+}
+
+@media (max-width: 760px) {
+    .bitcn-nav {
+        grid-template-columns: repeat(5, minmax(64px, 1fr));
+        width: calc(100% - 24px);
+        gap: 8px;
+    }
+
+    .bitcn-status {
+        top: 8px;
+        max-width: calc(100% - 20px);
+        overflow-x: auto;
+        justify-content: flex-start;
+    }
+
+    .bitcn-status-chip {
+        font-size: 11px;
+    }
+
+    .bitcn-button {
+        min-width: 0;
+        padding: 0 8px;
+        font-size: 13px;
+    }
+
+    .bitcn-nav-icon {
+        width: 26px;
+        height: 26px;
+    }
+
+    .bitcn-market-panel {
+        top: 7%;
+        width: calc(100% - 34px);
+        max-height: calc(100% - 128px);
+        padding: 12px;
+    }
+
+    .bitcn-settings-panel {
+        right: 18px;
+        left: 18px;
+        top: 68px;
+        width: auto;
+        padding: 12px;
+    }
+
+    .bitcn-settings-stats,
+    .bitcn-settings-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .bitcn-settings-button.is-danger {
+        grid-column: auto;
+    }
+
+    .bitcn-app-panel {
+        left: 18px;
+        right: 18px;
+        top: 64px;
+        width: auto;
+        height: calc(100% - 146px);
+        transform: none;
+        padding: 12px;
+    }
+
+    .bitcn-app-content {
+        height: auto;
+    }
+
+    .bitcn-letter-layout,
+    .bitcn-visitor-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .bitcn-letter-list,
+    .bitcn-visitor-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-height: 160px;
+    }
+
+    .bitcn-visitor-top,
+    .bitcn-npc-arrival-card {
+        grid-template-columns: 1fr;
+    }
+
+    .bitcn-visitor-portrait {
+        min-height: 210px;
+    }
+
+    .bitcn-visitor-portrait img {
+        max-height: 250px;
+    }
+
+    .bitcn-npc-arrival-card {
+        bottom: 18px;
+        max-height: calc(100% - 36px);
+        overflow-y: auto;
+    }
+
+    .bitcn-npc-arrival-card .bitcn-visitor-portrait {
+        min-height: 150px;
+    }
+
+    .bitcn-card-grid,
+    .bitcn-reward-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .bitcn-build-card,
+    .bitcn-reward-card {
+        grid-template-columns: 1fr;
+    }
+
+    .bitcn-build-actions {
+        justify-content: flex-start;
+    }
+
+    .bitcn-market-card {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .bitcn-market-detail {
+        grid-template-columns: 1fr;
+    }
+
+    .bitcn-market-chart {
+        height: 150px;
+    }
+
+    .bitcn-market-controls {
+        flex-wrap: wrap;
+    }
+
+    .bitcn-side-dock {
+        left: 10px;
+        top: 62px;
+        width: 142px;
+        gap: 10px;
+    }
+
+    .bitcn-order-dock {
+        right: 10px;
+        top: 108px;
+        width: min(300px, calc(100% - 20px));
+        max-height: 42%;
+    }
+
+    .bitcn-side-card {
+        padding: 10px;
+    }
+
+    .bitcn-side-button {
+        height: 36px;
+        font-size: 12px;
+    }
+}
+
+/* ================== DOM-only UI fixes ================== */
+.bitcn-app-panel.is-open {
+    display: flex;
+    flex-direction: column;
+}
+
+.bitcn-app-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.bitcn-story-modal {
+    position: absolute;
+    inset: 0;
+    z-index: 80;
+    display: none;
+    pointer-events: none;
+}
+
+.bitcn-story-modal.is-open {
+    display: block;
+    pointer-events: auto;
+}
+
+.bitcn-story-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(26, 32, 38, 0.38);
+}
+
+.bitcn-story-card {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    display: flex;
+    flex-direction: column;
+    width: min(620px, calc(100% - 42px));
+    max-height: min(560px, calc(100% - 96px));
+    padding: 18px;
+    transform: translate(-50%, -50%);
+    color: var(--farm-ink);
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.14), transparent 18%, transparent 82%, rgba(112, 67, 39, 0.05)),
+        var(--farm-paper);
+    border-top: 6px solid var(--farm-wood);
+    border-bottom: 6px solid var(--farm-wood);
+    box-shadow:
+        -6px 0 0 var(--farm-wood),
+        6px 0 0 var(--farm-wood),
+        8px 8px 0 rgba(54, 36, 24, 0.22);
+    overflow: hidden;
+}
+
+.bitcn-story-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 16px 18px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    background: #fffdf0;
+    box-shadow:
+        0 -4px 0 #c49b55,
+        0 4px 0 #c49b55,
+        -4px 0 0 #c49b55,
+        4px 0 0 #c49b55;
+    scrollbar-color: var(--farm-leaf) #ead9ad;
+    scrollbar-width: thin;
+}
+
+.bitcn-story-body h3 {
+    margin: 0 0 14px;
+    font: 900 19px Arial, sans-serif;
+}
+
+.bitcn-story-body p {
+    margin: 0 0 12px;
+    color: #5d513f;
+    font: 700 15px/1.75 Arial, sans-serif;
+}
+
+.bitcn-story-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 16px;
+}
+
+.bitcn-story-actions span {
+    margin-right: auto;
+    color: #77644c;
+    font: 700 13px Arial, sans-serif;
+}
+
+.bitcn-tile-tip {
+    position: absolute;
+    z-index: 18;
+    display: none;
+    width: 244px;
+    padding: 12px 14px;
+    pointer-events: none;
+    color: var(--farm-ink);
+    background: rgba(255, 248, 223, 0.98);
+    border-top: 5px solid var(--farm-wood);
+    border-bottom: 5px solid var(--farm-wood);
+    box-shadow:
+        -5px 0 0 var(--farm-wood),
+        5px 0 0 var(--farm-wood),
+        5px 5px 0 rgba(54, 36, 24, 0.18);
+}
+
+.bitcn-tile-tip.is-open {
+    display: grid;
+    gap: 8px;
+}
+
+.bitcn-tile-tip strong {
+    font: 900 15px Arial, sans-serif;
+}
+
+.bitcn-tile-tip span {
+    color: #5d513f;
+    font: 700 13px Arial, sans-serif;
+}
+
+.bitcn-tutorial-panel {
+    position: absolute;
+    left: 176px;
+    top: 66px;
+    z-index: 7;
+    display: none;
+    width: min(344px, calc(100% - 42px));
+    min-height: 112px;
+    padding: 14px 16px 14px 22px;
+    pointer-events: auto;
+    color: var(--farm-ink);
+    background: rgba(255, 248, 223, 0.97);
+    border-top: 5px solid var(--farm-wood);
+    border-bottom: 5px solid var(--farm-wood);
+    box-shadow:
+        -5px 0 0 var(--farm-wood),
+        5px 0 0 var(--farm-wood),
+        inset 6px 0 0 var(--farm-leaf),
+        5px 5px 0 rgba(54, 36, 24, 0.14);
+}
+
+.bitcn-tutorial-panel.is-open {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+}
+
+.bitcn-tutorial-panel small {
+    color: #77644c;
+    font: 800 12px Arial, sans-serif;
+}
+
+.bitcn-tutorial-panel strong {
+    font: 900 16px Arial, sans-serif;
+}
+
+.bitcn-tutorial-panel span {
+    color: #5d513f;
+    font: 700 13px/1.55 Arial, sans-serif;
+}
+
+.bitcn-tutorial-panel .bitcn-mini-button {
+    justify-self: end;
+    margin-top: 2px;
+}
+
+@media (max-width: 780px) {
+    .bitcn-story-card {
+        width: calc(100% - 36px);
+        max-height: calc(100% - 84px);
+        padding: 12px;
+    }
+
+    .bitcn-story-actions {
+        justify-content: stretch;
+    }
+
+    .bitcn-story-actions span {
+        width: 100%;
+        margin-right: 0;
+    }
+
+    .bitcn-story-actions .bitcn-button {
+        flex: 1 1 auto;
+    }
+
+    .bitcn-tutorial-panel {
+        left: 18px;
+        top: 68px;
+        width: calc(100% - 72px);
+    }
+}
+
+/* ================== DOM-only stability patch v2 ================== */
+.bitcn-story-modal {
+    touch-action: none;
+    contain: layout paint;
+}
+
+.bitcn-story-card {
+    height: min(560px, calc(100% - 96px));
+    transform: translate3d(-50%, -50%, 0);
+    will-change: transform;
+}
+
+.bitcn-story-body,
+.bitcn-app-content,
+.bitcn-market-list,
+.bitcn-order-list,
+.bitcn-settings-panel {
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+}
+
+.bitcn-story-scrim,
+.bitcn-story-card,
+.bitcn-panel,
+.bitcn-side-dock,
+.bitcn-order-dock,
+.bitcn-tile-tip,
+.bitcn-tutorial-panel {
+    pointer-events: auto;
+}
+
+.bitcn-app-panel.is-open,
+.bitcn-market-panel.is-open,
+.bitcn-settings-panel.is-open {
+    isolation: isolate;
+}
+
+@media (max-width: 760px) {
+    .bitcn-story-card {
+        left: 14px;
+        right: 14px;
+        top: 68px;
+        width: auto;
+        height: calc(100% - 96px);
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+
+/* ================== DOM UI final stability patch ================== */
+.bitcn-story-modal {
+    z-index: 80;
+}
+
+.bitcn-story-card {
+    height: min(560px, calc(100% - 96px));
+    max-height: none;
+}
+
+.bitcn-story-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+}
+
+.bitcn-story-body::-webkit-scrollbar,
+.bitcn-app-content::-webkit-scrollbar,
+.bitcn-market-list::-webkit-scrollbar,
+.bitcn-order-list::-webkit-scrollbar {
+    width: 10px;
+}
+
+.bitcn-story-body::-webkit-scrollbar-thumb,
+.bitcn-app-content::-webkit-scrollbar-thumb,
+.bitcn-market-list::-webkit-scrollbar-thumb,
+.bitcn-order-list::-webkit-scrollbar-thumb {
+    background: var(--farm-leaf);
+    border: 2px solid #ead9ad;
+}
+
+/* ================== DOM UI v4 scroll/flicker fix ================== */
+/* The old v2 patch set touch-action:none on the whole modal. That blocks
+   mobile/touch scrolling inside the body, because touch-action is resolved
+   through ancestors. The body, not the outer shell, owns vertical scrolling. */
+.bitcn-story-modal {
+    touch-action: auto !important;
+    contain: layout paint;
+}
+
+.bitcn-story-modal.is-open {
+    display: block !important;
+    pointer-events: auto !important;
+}
+
+.bitcn-story-card {
+    display: flex !important;
+    flex-direction: column !important;
+    height: min(560px, calc(100% - 96px)) !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    touch-action: pan-y !important;
+}
+
+.bitcn-story-card .bitcn-panel-header,
+.bitcn-story-actions {
+    flex: 0 0 auto !important;
+}
+
+.bitcn-story-body {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    touch-action: pan-y !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    contain: content;
+}
+
+.bitcn-story-scrim {
+    touch-action: auto !important;
+}
+
+
+/* ================== v5 scroll stability ================== */
+.bitcn-panel,
+.bitcn-app-panel,
+.bitcn-market-panel,
+.bitcn-settings-panel {
+    background-color: var(--farm-paper) !important;
+}
+
+.bitcn-app-panel {
+    contain: layout paint;
+}
+
+.bitcn-app-content {
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch;
+    will-change: scroll-position;
+}
+
+
+/* ================== Market scroll stability patch v6 ================== */
+.bitcn-market-panel.is-open {
+    display: flex;
+    flex-direction: column;
+    height: min(76%, 690px);
+    max-height: calc(100% - 150px);
+    overflow: hidden;
+    touch-action: pan-y;
+}
+
+.bitcn-market-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none !important;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    contain: content;
+}
+
+.bitcn-market-panel .bitcn-panel-header {
+    flex: 0 0 auto;
+}
+
+/* ================== Readability pass v7 ================== */
+.bitcn-button {
+    font-size: 17px;
+}
+
+.bitcn-status-chip {
+    font: 800 14px Arial, sans-serif;
+}
+
+.bitcn-status-button {
+    min-width: 76px;
+    height: 34px;
+    font-size: 14px;
+}
+
+.bitcn-panel-header strong {
+    font-size: 24px;
+}
+
+.bitcn-panel-header span {
+    font-size: 15px;
+}
+
+.bitcn-panel-tab {
+    min-width: 108px;
+    height: 42px;
+    font-size: 15px;
+}
+
+.bitcn-section-title {
+    font-size: 20px;
+}
+
+.bitcn-build-card strong,
+.bitcn-market-meta strong,
+.bitcn-market-detail-info strong {
+    font-size: 19px;
+}
+
+.bitcn-build-card span,
+.bitcn-build-card small,
+.bitcn-market-meta span,
+.bitcn-market-detail-info span {
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.bitcn-mini-button {
+    min-width: 76px;
+    height: 36px;
+    font-size: 15px;
+}
+
+.bitcn-action-button {
+    height: 38px;
+    font-size: 15px;
+}
+
+.bitcn-market-input {
+    width: 78px;
+    height: 38px;
+    font-size: 18px;
+}
+
+.bitcn-order-header {
+    gap: 8px;
+}
+
+.bitcn-order-header strong {
+    font-size: 19px;
+}
+
+.bitcn-order-timer {
+    color: #fff8df;
+    font: 800 14px Arial, sans-serif;
+    opacity: 0.92;
+}
+
+.bitcn-order-card strong {
+    font-size: 16px;
+}
+
+.bitcn-order-card span {
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.bitcn-order-card.is-empty {
+    opacity: 0.78;
+}
+
+.bitcn-order-refresh {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) auto;
+    gap: 8px 14px;
+    align-items: center;
+    margin: 0 0 14px;
+    padding: 12px;
+    background: #fff6d7;
+    border-top: 5px solid #b98c49;
+    border-bottom: 5px solid #b98c49;
+    box-shadow:
+        -5px 0 0 #b98c49,
+        5px 0 0 #b98c49,
+        5px 5px 0 rgba(54, 36, 24, 0.12);
+}
+
+.bitcn-order-refresh strong {
+    font: 900 19px Arial, sans-serif;
+}
+
+.bitcn-order-refresh span {
+    color: #6d5b43;
+    font: 800 15px/1.45 Arial, sans-serif;
+}
+
+.bitcn-order-refresh .bitcn-button {
+    grid-row: span 2;
+}
+
+@media (max-width: 760px) {
+    .bitcn-status-chip {
+        font-size: 13px;
+    }
+
+    .bitcn-button {
+        font-size: 15px;
+    }
+
+    .bitcn-panel-header strong {
+        font-size: 21px;
+    }
+
+    .bitcn-order-refresh {
+        grid-template-columns: 1fr;
+    }
+
+    .bitcn-order-refresh .bitcn-button {
+        grid-row: auto;
+    }
+}
+
+/* ================== Readability pass v8 ================== */
+.bitcn-status {
+    gap: 12px;
+    padding: 10px 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.bitcn-status-chip {
+    gap: 7px;
+    font: 900 18px Arial, sans-serif;
+}
+
+.bitcn-status-chip canvas {
+    width: 22px;
+    height: 22px;
+}
+
+.bitcn-status-button {
+    min-width: 92px;
+    height: 40px;
+    padding: 0 12px;
+    font-size: 16px;
+}
+
+.bitcn-letter-layout {
+    grid-template-columns: minmax(210px, 300px) minmax(0, 1fr);
+}
+
+.bitcn-letter-button {
+    min-height: 54px;
+    padding: 12px 14px;
+    font: 900 17px/1.35 Arial, sans-serif;
+}
+
+.bitcn-letter-detail {
+    padding: 28px 30px;
+}
+
+.bitcn-letter-detail > strong {
+    margin-bottom: 20px;
+    font: 900 30px/1.25 Arial, sans-serif;
+}
+
+.bitcn-letter-detail p {
+    margin-bottom: 18px;
+    font: 800 21px/1.9 Arial, sans-serif;
+    color: #4c4135;
+}
+
+.bitcn-story-body h3 {
+    font: 900 27px/1.25 Arial, sans-serif;
+}
+
+.bitcn-story-body p {
+    font: 800 19px/1.85 Arial, sans-serif;
+    color: #4c4135;
+}
+
+.bitcn-tutorial-panel {
+    width: min(470px, calc(100% - 72px));
+    padding: 18px 20px;
+}
+
+.bitcn-tutorial-panel.is-open {
+    gap: 11px;
+}
+
+.bitcn-tutorial-panel small {
+    font: 900 15px Arial, sans-serif;
+}
+
+.bitcn-tutorial-panel strong {
+    font: 900 22px/1.25 Arial, sans-serif;
+}
+
+.bitcn-tutorial-panel span {
+    font: 800 17px/1.65 Arial, sans-serif;
+}
+
+.bitcn-tutorial-tips {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0 0 0 20px;
+    color: #6b5a43;
+    font: 800 15px/1.55 Arial, sans-serif;
+}
+
+.bitcn-order-card {
+    min-height: 82px;
+}
+
+.bitcn-order-card strong {
+    font-size: 18px;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.bitcn-order-card span {
+    font-size: 15px;
+    line-height: 1.55;
+}
+
+.bitcn-order-refresh strong {
+    font-size: 21px;
+}
+
+.bitcn-order-refresh span,
+.bitcn-order-timer {
+    font-size: 16px;
+}
+
+@media (max-width: 760px) {
+    .bitcn-status {
+        top: 8px;
+        gap: 8px;
+        padding: 8px 10px;
+    }
+
+    .bitcn-status-chip {
+        font-size: 15px;
+    }
+
+    .bitcn-status-chip canvas {
+        width: 18px;
+        height: 18px;
+    }
+
+    .bitcn-status-button {
+        min-width: 78px;
+        height: 36px;
+        font-size: 14px;
+    }
+
+    .bitcn-letter-button {
+        font-size: 16px;
+    }
+
+    .bitcn-letter-detail {
+        padding: 22px;
+    }
+
+    .bitcn-letter-detail > strong {
+        font-size: 25px;
+    }
+
+    .bitcn-letter-detail p {
+        font-size: 18px;
+        line-height: 1.75;
+    }
+
+    .bitcn-story-body h3 {
+        font-size: 23px;
+    }
+
+    .bitcn-story-body p {
+        font-size: 17px;
+        line-height: 1.7;
+    }
+
+    .bitcn-tutorial-panel {
+        left: 14px;
+        width: calc(100% - 60px);
+    }
+}
+
+/* ================== Status bar polish v9 ================== */
+.bitcn-status {
+    top: 12px;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    max-width: calc(100% - 36px);
+    min-height: 44px;
+    padding: 7px 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+}
+
+.bitcn-status::-webkit-scrollbar {
+    display: none;
+}
+
+.bitcn-status-chip {
+    min-height: 30px;
+    gap: 6px;
+    padding: 0 2px;
+    font: 900 16px Arial, sans-serif;
+}
+
+.bitcn-status-chip canvas {
+    width: 19px;
+    height: 19px;
+}
+
+.bitcn-status-button {
+    min-width: 76px;
+    height: 34px;
+    padding: 0 10px;
+    font-size: 15px;
+}
+
+.bitcn-support-button {
+    min-width: 76px;
+}
+
+@media (max-width: 960px) {
+    .bitcn-status {
+        justify-content: start;
+        gap: 9px;
+        max-width: calc(100% - 20px);
+        padding: 7px 10px;
+    }
+
+    .bitcn-status-chip {
+        font-size: 15px;
+    }
+
+    .bitcn-status-button {
+        min-width: 70px;
+        font-size: 14px;
+    }
+}
+
+/* ================== Outer HUD polish v10 ================== */
+#game-container::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    box-shadow:
+        inset 0 0 0 2px rgba(62, 43, 28, 0.16),
+        inset 0 0 72px rgba(50, 82, 47, 0.18);
+}
+
+.bitcn-nav {
+    bottom: 14px;
+    grid-template-columns: repeat(5, minmax(112px, 148px));
+    gap: 12px;
+    padding: 10px 14px 12px;
+    background:
+        linear-gradient(180deg, rgba(255, 248, 223, 0.90), rgba(235, 207, 148, 0.90)),
+        #f2d18a;
+    border-top: 5px solid #7b4a2d;
+    border-bottom: 5px solid #7b4a2d;
+    box-shadow:
+        -5px 0 0 #7b4a2d,
+        5px 0 0 #7b4a2d,
+        0 8px 0 rgba(69, 45, 27, 0.16);
+}
+
+.bitcn-nav::before,
+.bitcn-nav::after {
+    content: "";
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    width: 4px;
+    background: rgba(255, 255, 255, 0.22);
+    pointer-events: none;
+}
+
+.bitcn-nav::before {
+    left: 12px;
+}
+
+.bitcn-nav::after {
+    right: 12px;
+}
+
+.bitcn-nav-button {
+    --bitcn-fill: #f6ca70;
+    --bitcn-fill-hover: #ffe08f;
+    min-width: 0;
+    height: 52px;
+    padding: 0 14px;
+    gap: 9px;
+    font-size: 17px;
+    filter: drop-shadow(3px 4px 0 rgba(66, 43, 25, 0.22));
+}
+
+.bitcn-nav-button .bitcn-nav-icon {
+    width: 30px;
+    height: 30px;
+}
+
+.bitcn-nav-button.is-active {
+    --bitcn-fill: #ffe08f;
+    transform: translateY(-4px);
+}
+
+.bitcn-nav-button.is-active::after {
+    box-shadow:
+        inset 0 4px 0 rgba(255, 255, 255, 0.34),
+        inset 0 -5px 0 rgba(92, 55, 31, 0.16),
+        0 0 0 2px rgba(127, 159, 103, 0.26);
+}
+
+.bitcn-status {
+    background:
+        linear-gradient(180deg, rgba(255, 251, 230, 0.95), rgba(245, 226, 184, 0.94)),
+        #fff8df;
+    border-top-color: #8a5632;
+    border-bottom-color: #8a5632;
+    box-shadow:
+        -5px 0 0 #8a5632,
+        5px 0 0 #8a5632,
+        0 5px 0 rgba(64, 42, 25, 0.16);
+}
+
+.bitcn-status-chip {
+    position: relative;
+    padding: 0 8px;
+    color: #4a392c;
+}
+
+.bitcn-status-chip + .bitcn-status-chip::before {
+    content: "";
+    position: absolute;
+    left: -6px;
+    top: 7px;
+    width: 2px;
+    height: 16px;
+    background: rgba(123, 74, 45, 0.22);
+}
+
+.bitcn-status-chip[data-stat="coins"],
+.bitcn-status-chip[data-stat="level"] {
+    color: #3c2a1d;
+}
+
+.bitcn-status-chip[data-stat="tool"] {
+    color: #5a432f;
+}
+
+.bitcn-status .bitcn-button {
+    filter: drop-shadow(2px 3px 0 rgba(66, 43, 25, 0.20));
+}
+
+.bitcn-side-dock {
+    left: 16px;
+    top: 86px;
+    width: 168px;
+    gap: 12px;
+}
+
+.bitcn-side-card {
+    gap: 10px;
+    padding: 12px;
+    background:
+        linear-gradient(180deg, rgba(255, 248, 223, 0.92), rgba(239, 212, 159, 0.92)),
+        #f3d99d;
+    border-top-color: #9b6a3b;
+    border-bottom-color: #9b6a3b;
+    box-shadow:
+        -5px 0 0 #9b6a3b,
+        5px 0 0 #9b6a3b,
+        5px 6px 0 rgba(54, 36, 24, 0.14);
+}
+
+.bitcn-side-card > strong {
+    padding-bottom: 6px;
+    color: #5a351f;
+    border-bottom: 2px solid rgba(123, 74, 45, 0.22);
+    font-size: 16px;
+}
+
+.bitcn-side-button,
+.bitcn-reset-zoom {
+    --bitcn-fill: #fff0b8;
+    --bitcn-fill-hover: #ffe08f;
+    height: 40px;
+    font-size: 15px;
+}
+
+.bitcn-side-button.is-cooling {
+    --bitcn-fill: #d4c6a6;
+    color: #71624b;
+}
+
+.bitcn-order-dock {
+    top: 108px;
+    width: 318px;
+    padding: 12px;
+    background:
+        linear-gradient(180deg, rgba(255, 248, 223, 0.94), rgba(238, 213, 163, 0.94)),
+        #f2d9a1;
+    border-top-color: #8a5632;
+    border-bottom-color: #8a5632;
+    box-shadow:
+        -5px 0 0 #8a5632,
+        5px 0 0 #8a5632,
+        6px 7px 0 rgba(54, 36, 24, 0.15);
+}
+
+.bitcn-order-header {
+    position: relative;
+    padding: 9px 10px;
+    background:
+        linear-gradient(180deg, #9f6b3d, #7b4a2d);
+}
+
+.bitcn-order-header::before,
+.bitcn-order-header::after {
+    content: "";
+    position: absolute;
+    top: 10px;
+    width: 6px;
+    height: 6px;
+    background: #f3c86f;
+    box-shadow: 0 2px 0 rgba(63, 47, 36, 0.18);
+}
+
+.bitcn-order-header::before {
+    left: 8px;
+}
+
+.bitcn-order-header::after {
+    right: 8px;
+}
+
+.bitcn-order-header strong {
+    padding-left: 10px;
+}
+
+.bitcn-order-card {
+    position: relative;
+    padding: 11px 12px 11px 15px;
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.20), transparent 28%),
+        #fff9df;
+    border-top-color: #b98c49;
+    border-bottom-color: #b98c49;
+    box-shadow:
+        -4px 0 0 #b98c49,
+        4px 0 0 #b98c49,
+        3px 4px 0 rgba(54, 36, 24, 0.10);
+}
+
+.bitcn-order-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 5px;
+    background: #cba65d;
+}
+
+.bitcn-order-card.is-ready {
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent 30%),
+        #fff0b6;
+}
+
+.bitcn-order-card.is-ready::before {
+    background: #7f9f67;
+}
+
+.bitcn-order-card .bitcn-mini-button {
+    min-width: 68px;
+}
+
+.bitcn-tile-tip {
+    width: 260px;
+    padding: 13px 15px;
+    background:
+        linear-gradient(180deg, rgba(255, 248, 223, 0.97), rgba(244, 222, 177, 0.97)),
+        #fff8df;
+    border-top-color: #8a5632;
+    border-bottom-color: #8a5632;
+    box-shadow:
+        -5px 0 0 #8a5632,
+        5px 0 0 #8a5632,
+        5px 6px 0 rgba(54, 36, 24, 0.16);
+}
+
+.bitcn-tile-tip strong {
+    color: #4a2f1e;
+    font-size: 17px;
+}
+
+.bitcn-tile-tip span {
+    color: #6a573f;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+    .bitcn-nav {
+        bottom: 10px;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 7px;
+        padding: 8px;
+    }
+
+    .bitcn-nav-button {
+        height: 48px;
+        padding: 0 6px;
+        gap: 5px;
+        font-size: 14px;
+    }
+
+    .bitcn-nav-button .bitcn-nav-icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    .bitcn-side-dock {
+        top: 74px;
+        width: 136px;
+    }
+
+    .bitcn-order-dock {
+        top: 104px;
+        width: min(292px, calc(100% - 20px));
+    }
+}
+
+/* ================== Ending + Year Ring expansion v1 ================== */
+.bitcn-ending-summary,
+.bitcn-ending-detail {
+    display: grid;
+    gap: 10px;
+    padding: 16px 18px;
+    color: var(--farm-ink);
+    background: rgba(255, 248, 223, 0.96);
+    border-top: 5px solid var(--farm-wood);
+    border-bottom: 5px solid var(--farm-wood);
+    box-shadow:
+        -5px 0 0 var(--farm-wood),
+        5px 0 0 var(--farm-wood),
+        5px 5px 0 rgba(54, 36, 24, 0.14);
+}
+
+.bitcn-year-ring-summary {
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.24), transparent 34%),
+        rgba(255, 239, 191, 0.98);
+}
+
+.bitcn-ending-summary strong,
+.bitcn-ending-detail > strong {
+    font: 900 18px Arial, sans-serif;
+}
+
+.bitcn-ending-summary span,
+.bitcn-ending-summary small,
+.bitcn-ending-detail p,
+.bitcn-ending-detail small {
+    color: #5d513f;
+    font: 700 14px/1.68 Arial, sans-serif;
+}
+
+.bitcn-ending-detail h4 {
+    margin: 8px 0 0;
+    color: #7b4b2a;
+    font: 900 15px Arial, sans-serif;
+}
+
+.bitcn-ending-longtext {
+    display: grid;
+    gap: 8px;
+    padding: 12px 14px;
+    background: rgba(255, 253, 240, 0.78);
+    box-shadow:
+        0 -4px 0 #c49b55,
+        0 4px 0 #c49b55,
+        -4px 0 0 #c49b55,
+        4px 0 0 #c49b55;
+}
+
+.bitcn-ending-longtext p {
+    margin: 0;
+}
+
+.bitcn-ending-actions {
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.bitcn-primary-action {
+    --bitcn-fill: #9fcb86;
+    --bitcn-fill-hover: #b8df9d;
+}
+
+.bitcn-year-ring-button:not(:disabled) {
+    --bitcn-fill: #d7b4ff;
+    --bitcn-fill-hover: #e3caff;
+}
+
+.bitcn-ending-card.is-active {
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.28), transparent 28%),
+        #ffe3a1;
+    box-shadow:
+        0 -4px 0 #b2763a,
+        0 4px 0 #b2763a,
+        -4px 0 0 #b2763a,
+        4px 0 0 #b2763a;
+}
+
+.bitcn-ending-card.is-archived:not(.is-active) {
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.16), transparent 30%),
+        #f4ead6;
+}
+
+.bitcn-ending-card.is-locked:not(.is-archived) {
+    opacity: 0.74;
+}
+
+.bitcn-post-goal-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.bitcn-post-goal-card.is-ready {
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent 24%),
+        #f0fff4;
+}
+
+.bitcn-post-goal-card.is-claimed {
+    opacity: 0.72;
+}
+
+@media (max-width: 760px) {
+    .bitcn-ending-actions .bitcn-button,
+    .bitcn-post-goal-card .bitcn-button {
+        width: 100%;
+    }
+
+    .bitcn-post-goal-card {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }

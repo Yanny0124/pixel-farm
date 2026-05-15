@@ -3,6 +3,7 @@ dist/
 ~$*.docx
 Thumbs.db
 .DS_Store
+.codex/
 
 # Development-only planning docs and unused art references
 计划书/

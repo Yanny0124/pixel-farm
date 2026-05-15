@@ -1,10 +1,29 @@
 // ==========================================
 // Render/Effects: 粒子、浮字、震屏
 // ==========================================
+const MAX_PARTICLES = 180;
+const MAX_FLOATING_TEXTS = 40;
+const MAX_RESONANCE_BURSTS = 6;
+const MAX_RESONANCE_BURST_CELLS = 40;
+
+function trimEffectList(list, max) {
+    if (!Array.isArray(list) || list.length <= max) return list;
+    list.splice(0, list.length - max);
+    return list;
+}
+
+function addFloatingText(text) {
+    floatingTexts.push(text);
+    trimEffectList(floatingTexts, MAX_FLOATING_TEXTS);
+}
+
 function spawnHarvestEffects(row, col, config, options = {}) {
-    const x = farmStartX + col * TILE_SIZE + TILE_SIZE / 2;
-    const y = farmStartY + row * TILE_SIZE + TILE_SIZE / 2;
-    for (let i = 0; i < 10; i++) {
+    if (options.quiet) return;
+    const x = (typeof getFarmTileWorldX === 'function' ? getFarmTileWorldX(col) : farmStartX + col * TILE_SIZE) + TILE_SIZE / 2;
+    const y = (typeof getFarmTileWorldY === 'function' ? getFarmTileWorldY(row) : farmStartY + row * TILE_SIZE) + TILE_SIZE / 2;
+    const defaultCount = options.bulk ? 2 : 10;
+    const particleCount = Math.max(0, Math.min(10, Number.isFinite(options.particleCount) ? options.particleCount : defaultCount));
+    for (let i = 0; i < particleCount; i++) {
         particles.push({
             x,
             y,
@@ -14,27 +33,38 @@ function spawnHarvestEffects(row, col, config, options = {}) {
             color: config.matureColor
         });
     }
-    floatingTexts.push({ x, y, text: `+${config.icon}`, life: 90, color: '#f1c40f' });
-    if (!options.quiet && marketState[configKeyByName(config)]?.price > 50) {
-        screenShake.until = Date.now() + 80;
-        screenShake.power = 2;
-    }
+    trimEffectList(particles, MAX_PARTICLES);
+    if (!options.bulk) addFloatingText({ x, y, text: `+${config.icon}`, life: 90, color: '#f1c40f' });
 }
 
 function configKeyByName(config) {
     return Object.keys(CROP_CONFIG).find(key => CROP_CONFIG[key] === config);
 }
 
+function triggerScreenShake(duration = 80, power = 1.5, options = {}) {
+    if (options.quiet || uiPreferences?.screenShake === false) return;
+    screenShake.until = Date.now() + duration;
+    screenShake.duration = duration;
+    screenShake.power = power;
+}
+
 function spawnResonanceBurst(cluster, cropType) {
+    const sourceCells = cluster.length > MAX_RESONANCE_BURST_CELLS
+        ? cluster.filter((_, index) => index % Math.ceil(cluster.length / MAX_RESONANCE_BURST_CELLS) === 0).slice(0, MAX_RESONANCE_BURST_CELLS)
+        : cluster;
     resonanceBursts.push({
         cropType,
-        cells: cluster.map(cell => ({ row: cell.row, col: cell.col })),
+        cells: sourceCells.map(cell => ({ row: cell.row, col: cell.col })),
         life: 70,
         maxLife: 70
     });
+    trimEffectList(resonanceBursts, MAX_RESONANCE_BURSTS);
 }
 
 function updateEffects() {
+    trimEffectList(particles, MAX_PARTICLES);
+    trimEffectList(floatingTexts, MAX_FLOATING_TEXTS);
+    trimEffectList(resonanceBursts, MAX_RESONANCE_BURSTS);
     for (const p of particles) {
         p.x += p.vx;
         p.y += p.vy;
@@ -88,8 +118,8 @@ function drawResonanceBursts(ctx) {
         ctx.lineWidth = 3;
         ctx.beginPath();
         for (const cell of burst.cells) {
-            const cx = farmStartX + cell.col * TILE_SIZE + TILE_SIZE / 2;
-            const cy = farmStartY + cell.row * TILE_SIZE + TILE_SIZE / 2;
+            const cx = (typeof getFarmTileWorldX === 'function' ? getFarmTileWorldX(cell.col) : farmStartX + cell.col * TILE_SIZE) + TILE_SIZE / 2;
+            const cy = (typeof getFarmTileWorldY === 'function' ? getFarmTileWorldY(cell.row) : farmStartY + cell.row * TILE_SIZE) + TILE_SIZE / 2;
             ctx.moveTo(cx - 10, cy);
             ctx.lineTo(cx + 10, cy);
             ctx.moveTo(cx, cy - 10);

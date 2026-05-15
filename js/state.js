@@ -12,7 +12,7 @@ let skills = createDefaultSkills();
 let weather = { type: 'sunny', changedAt: Date.now(), forcedUntil: 0 };
 let talentPoints = 0;
 let talents = { agriculture: 0, husbandry: 0, industry: 0 };
-let stats = { harvests: {}, resonances: 0, totalOfflineSeconds: 0, totalPlaySeconds: 0, ordersCompleted: 0, weatherSeen: {}, rainSkillUsed: false, visitorTalks: 0 };
+let stats = { harvests: {}, resonances: 0, totalOfflineSeconds: 0, totalPlaySeconds: 0, ordersCompleted: 0, weatherSeen: {}, rainSkillUsed: false, visitorTalks: 0, visitorArrival: {} };
 let miracleBonuses = { irrigation: false, barn: false };
 let collectionBonuses = createDefaultCollectionBonuses();
 let collection = { items: {}, variants: {}, claimedRewards: {}, claimedSetRewards: {} };
@@ -22,6 +22,7 @@ let farmDiary = { dayKey: '', entries: [] };
 let seedUnlockState = { seen: { carrot: true }, animals: {} };
 let mutationState = { pending: {} };
 let visitorState = {};
+let affectionState = {};
 let miracleState = { irrigation: { stage: 0, completed: false }, barn: { stage: 0, completed: false } };
 let endingState = { unlocked: {}, read: {} };
 
@@ -32,7 +33,9 @@ let processingBuildings = { mill: 0, ketchupFactory: 0, bakery: 0, dairy: 0 };
 let processingJobs = {};
 let processingAuto = { mill: false, ketchupFactory: false, bakery: false, dairy: false };
 let workers = [];
+let droneUpgrades = createDefaultDroneUpgrades();
 let tasks = [];
+let orderState = { nextRefreshAt: 0 };
 
 let effectText = "";
 let effectAlpha = 0;
@@ -41,8 +44,9 @@ let floatingTexts = [];
 let resonanceBursts = [];
 let offlineReturnFx = null;
 let screenShake = { until: 0, power: 0 };
+let uiPreferences = { screenShake: true, autoSowEnabled: true, lastSeedTool: 'carrot' };
 let lastSaveTimestamp = Date.now();
-let camera = { x: -(farmStartX - 50), y: -(farmStartY - 50), zoom: 1 };
+let camera = { x: -(farmStartX - WORLD_VIEW_FARM_SCREEN_X), y: -(farmStartY - WORLD_VIEW_FARM_SCREEN_Y), zoom: 1 };
 
 function createDefaultSkills() {
     return {
@@ -78,7 +82,7 @@ function resetRuntimeState() {
     weather = { type: 'sunny', changedAt: Date.now(), forcedUntil: 0 };
     talentPoints = 0;
     talents = { agriculture: 0, husbandry: 0, industry: 0 };
-    stats = { harvests: {}, resonances: 0, totalOfflineSeconds: 0, totalPlaySeconds: 0, ordersCompleted: 0, weatherSeen: {}, rainSkillUsed: false, visitorTalks: 0 };
+    stats = { harvests: {}, resonances: 0, totalOfflineSeconds: 0, totalPlaySeconds: 0, ordersCompleted: 0, weatherSeen: {}, rainSkillUsed: false, visitorTalks: 0, visitorArrival: {} };
     miracleBonuses = { irrigation: false, barn: false };
     collectionBonuses = createDefaultCollectionBonuses();
     collection = { items: {}, variants: {}, claimedRewards: {}, claimedSetRewards: {} };
@@ -88,6 +92,7 @@ function resetRuntimeState() {
     seedUnlockState = { seen: { carrot: true }, animals: {} };
     mutationState = { pending: {} };
     visitorState = {};
+    affectionState = {};
     miracleState = { irrigation: { stage: 0, completed: false }, barn: { stage: 0, completed: false } };
     endingState = { unlocked: {}, read: {} };
     animals = [];
@@ -96,7 +101,9 @@ function resetRuntimeState() {
     processingJobs = {};
     processingAuto = { mill: false, ketchupFactory: false, bakery: false, dairy: false };
     workers = [];
+    droneUpgrades = createDefaultDroneUpgrades();
     tasks = [];
+    orderState = { nextRefreshAt: 0 };
     effectText = "";
     effectAlpha = 0;
     particles = [];
@@ -104,7 +111,8 @@ function resetRuntimeState() {
     resonanceBursts = [];
     offlineReturnFx = null;
     screenShake = { until: 0, power: 0 };
-    camera = { x: -(farmStartX - 50), y: -(farmStartY - 50), zoom: 1 };
+    uiPreferences = { screenShake: true, autoSowEnabled: true, lastSeedTool: 'carrot' };
+    camera = { x: -(farmStartX - WORLD_VIEW_FARM_SCREEN_X), y: -(farmStartY - WORLD_VIEW_FARM_SCREEN_Y), zoom: 1 };
     lastSaveTimestamp = Date.now();
     initGrid();
     ensureDiaryDay();
@@ -136,7 +144,82 @@ function createDefaultInventory() {
 }
 
 function createDefaultMarketState() {
-    return Object.fromEntries(getMarketItemIds().map(id => [id, { price: CROP_CONFIG[id].basePrice, trend: 0 }]));
+    return Object.fromEntries(getMarketItemIds().map(id => [id, { price: CROP_CONFIG[id].basePrice, trend: 0, history: [CROP_CONFIG[id].basePrice] }]));
+}
+
+function createDefaultDroneUpgrades() {
+    return { speed: 0, efficiency: 0, cargo: 0 };
+}
+
+function normalizeDroneUpgrades(source) {
+    const upgrades = Object.assign(createDefaultDroneUpgrades(), source || {});
+    for (const [id, config] of Object.entries(DRONE_UPGRADE_CONFIG)) {
+        upgrades[id] = Math.max(0, Math.min(config.maxLevel, Number(upgrades[id]) || 0));
+    }
+    return upgrades;
+}
+
+function getDroneUpgradeLevel(id) {
+    return Number(droneUpgrades?.[id]) || 0;
+}
+
+function getDroneUpgradeCost(id) {
+    const config = DRONE_UPGRADE_CONFIG[id];
+    if (!config) return Infinity;
+    const level = getDroneUpgradeLevel(id);
+    if (level >= config.maxLevel) return Infinity;
+    return config.baseCost + level * config.costStep;
+}
+
+function upgradeDrone(id) {
+    const config = DRONE_UPGRADE_CONFIG[id];
+    if (!config) return false;
+    const level = getDroneUpgradeLevel(id);
+    if (level >= config.maxLevel) return false;
+    if (!(workers || []).some(worker => worker.type === 'drone')) {
+        alert('需要先部署一台无人机。');
+        return false;
+    }
+    const cost = getDroneUpgradeCost(id);
+    if (coins < cost) {
+        alert('金币不足。');
+        return false;
+    }
+    coins -= cost;
+    droneUpgrades[id] = level + 1;
+    effectText = `${config.name} Lv.${droneUpgrades[id]}`;
+    effectAlpha = 1.0;
+    recordDiary(`升级无人机：${config.name} Lv.${droneUpgrades[id]}`);
+    updateUI();
+    saveGame();
+    return true;
+}
+
+function getDroneActionCooldown() {
+    return Math.max(80, 260 - getDroneUpgradeLevel('efficiency') * DRONE_UPGRADE_CONFIG.efficiency.cooldownReduction);
+}
+
+function getDroneMoveSpeed() {
+    return 3.0 + getDroneUpgradeLevel('speed') * DRONE_UPGRADE_CONFIG.speed.bonusPerLevel;
+}
+
+function getDroneOfflinePower() {
+    return 18 + getDroneUpgradeLevel('cargo') * DRONE_UPGRADE_CONFIG.cargo.offlinePower;
+}
+
+function normalizeMarketStateHistory() {
+    for (const id of getMarketItemIds()) {
+        const config = CROP_CONFIG[id];
+        const base = config?.basePrice || 1;
+        const state = marketState[id] || (marketState[id] = { price: base, trend: 0, history: [base] });
+        if (!Number.isFinite(state.price) || state.price <= 0) state.price = base;
+        if (!Number.isFinite(state.trend)) state.trend = 0;
+        const normalized = Array.isArray(state.history)
+            ? state.history.map(point => typeof point === 'number' ? point : point?.price).filter(price => Number.isFinite(price) && price > 0)
+            : [];
+        if (!normalized.length) normalized.push(state.price);
+        state.history = normalized.slice(-48);
+    }
 }
 
 function isItemUnlocked(itemId) {
@@ -179,6 +262,28 @@ function checkSeedUnlocks(silent = false) {
 
 function getMaxExp() {
     return playerLevel * 500;
+}
+
+function formatCompactNumber(value) {
+    const number = Number(value) || 0;
+    const abs = Math.abs(number);
+    const units = [
+        [1_000_000_000_000, 'T'],
+        [1_000_000_000, 'B'],
+        [1_000_000, 'M'],
+        [1_000, 'K']
+    ];
+    for (const [size, suffix] of units) {
+        if (abs >= size) {
+            const next = number / size;
+            return `${next >= 10 ? next.toFixed(1) : next.toFixed(2)}`.replace(/\.0+$|(\.\d*[1-9])0+$/, '$1') + suffix;
+        }
+    }
+    return String(Math.floor(number));
+}
+
+function formatCoins(value) {
+    return `${formatCompactNumber(value)}币`;
 }
 
 function getTalentLevel(id) {
@@ -324,17 +429,30 @@ function sanitizeInventory(rawInventory = {}) {
 }
 
 function sanitizeTasks(rawTasks = []) {
-    const validTasks = (Array.isArray(rawTasks) ? rawTasks : []).filter(task => {
-        const config = CROP_CONFIG[task?.item];
-        return config && config.basePrice !== undefined && !config.noSell && Number(task.amount) > 0;
-    }).map(task => ({
-        id: task.id || Math.random().toString(36).substr(2, 9),
-        item: task.item,
-        amount: Math.max(1, Math.floor(Number(task.amount) || 1)),
-        reward: Math.max(1, Math.floor(Number(task.reward) || CROP_CONFIG[task.item].basePrice * 2)),
-        exp: Math.max(1, Math.floor(Number(task.exp) || CROP_CONFIG[task.item].basePrice))
-    }));
-    return validTasks.slice(0, 3);
+    const slots = Array.isArray(rawTasks) ? rawTasks.slice(0, 3) : [];
+    return slots.map(task => {
+        if (!task) return null;
+        const sourceItems = Array.isArray(task.items) && task.items.length
+            ? task.items
+            : [{ item: task.item, amount: task.amount }];
+        const items = sourceItems.map(entry => ({
+            item: entry.item,
+            amount: Math.max(1, Math.floor(Number(entry.amount) || 1))
+        })).filter(entry => {
+            const config = CROP_CONFIG[entry.item];
+            return config && config.basePrice !== undefined && !config.noSell && entry.amount > 0;
+        }).slice(0, 3);
+        if (!items.length) return null;
+        const primary = items[0];
+        return {
+            id: task.id || Math.random().toString(36).substr(2, 9),
+            item: primary.item,
+            amount: primary.amount,
+            items,
+            reward: Math.max(1, Math.floor(Number(task.reward) || items.reduce((sum, entry) => sum + CROP_CONFIG[entry.item].basePrice * entry.amount, 0) * 2)),
+            exp: Math.max(1, Math.floor(Number(task.exp) || items.reduce((sum, entry) => sum + CROP_CONFIG[entry.item].basePrice * entry.amount, 0)))
+        };
+    });
 }
 
 function normalizeGridCells() {
@@ -508,7 +626,8 @@ function addExp(amount) {
     if (levelsGained > 0) {
         effectText = levelsGained === 1 ? `🎉 升级啦！当前等级 Lv.${playerLevel}！` : `🚀 经验爆发！连升 ${levelsGained} 级，直达 Lv.${playerLevel}！`;
         effectAlpha = 1.0;
-        for (let i = 0; i < 3; i++) tasks[i] = generateTask();
+        if (typeof refreshOrderBoard === 'function') refreshOrderBoard(true);
+        else for (let i = 0; i < 3; i++) tasks[i] = generateTask();
     }
     checkStoryUnlocks();
     checkSeedUnlocks();
@@ -517,10 +636,13 @@ function addExp(amount) {
 
 function initGrid() {
     gridData = [];
+    const unlockSize = 4;
+    const unlockStartRow = Math.max(0, Math.floor(ROWS / 2) - Math.floor(unlockSize / 2));
+    const unlockStartCol = Math.max(0, Math.floor(COLS / 2) - Math.floor(unlockSize / 2));
     for (let r = 0; r < ROWS; r++) {
         const row = [];
         for (let c = 0; c < COLS; c++) {
-            const isCenter = r >= 6 && r <= 9 && c >= 6 && c <= 9;
+            const isCenter = r >= unlockStartRow && r < unlockStartRow + unlockSize && c >= unlockStartCol && c < unlockStartCol + unlockSize;
             row.push({ state: isCenter ? 0 : -1, timer: 0, cropType: null });
         }
         gridData.push(row);
@@ -544,7 +666,9 @@ function saveGame() {
         processingAuto,
         skills,
         tasks,
+        orderState,
         workers,
+        droneUpgrades,
         weather,
         talents,
         talentPoints,
@@ -558,9 +682,11 @@ function saveGame() {
         seedUnlockState,
         mutationState,
         visitorState,
+        affectionState,
         miracleState,
         endingState,
         audioEnabled,
+        uiPreferences,
         lastSaveTimestamp,
         camX: camera.x,
         camY: camera.y,
@@ -576,6 +702,7 @@ function applyOfflineProgress(saveData) {
     if (offlineMs < 60000) return;
     const offlineMultiplier = 1 + (getTalentLevel('industry') >= 3 ? 0.25 : 0);
     let cropReady = 0;
+    let cropAutoHarvested = 0;
     let animalItems = 0;
 
     for (let r = 0; r < ROWS; r++) {
@@ -590,6 +717,22 @@ function applyOfflineProgress(saveData) {
         }
     }
 
+    const humanWorkers = (workers || []).filter(worker => worker.type === 'human').length;
+    const droneWorkers = (workers || []).filter(worker => worker.type === 'drone').length;
+    const autoHarvestPower = humanWorkers * 8 + droneWorkers * getDroneOfflinePower();
+    const autoHarvestLimit = Math.min(cropReady, Math.floor(offlineMs / 60000) * autoHarvestPower);
+    if (autoHarvestLimit > 0) {
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (cropAutoHarvested >= autoHarvestLimit) break;
+                const cell = gridData[r][c];
+                if (cell.state !== 2 || !cell.cropType) continue;
+                cropAutoHarvested += harvestCell(r, c, false, { quiet: true });
+            }
+            if (cropAutoHarvested >= autoHarvestLimit) break;
+        }
+    }
+
     for (const animal of animals) {
         const pTime = getAnimalProduceTime(animal.type, animal);
         const produced = Math.floor((now - animal.timer + offlineMs * offlineMultiplier) / pTime);
@@ -601,11 +744,12 @@ function applyOfflineProgress(saveData) {
     }
 
     stats.totalOfflineSeconds = (stats.totalOfflineSeconds || 0) + Math.floor(offlineMs / 1000);
-    effectText = `⏱️ 离线 ${Math.floor(offlineMs / 60000)} 分钟：${cropReady} 块作物成熟，动物产出 ${animalItems} 件`;
+    effectText = `⏱️ 离线 ${Math.floor(offlineMs / 60000)} 分钟：${cropReady} 块作物成熟${cropAutoHarvested > 0 ? `，自动收割 ${cropAutoHarvested} 块` : ''}，动物产出 ${animalItems} 件`;
     effectAlpha = 1.0;
     if (cropReady > 0 || animalItems > 0) {
         offlineReturnFx = {
             cropReady,
+            cropAutoHarvested,
             animalItems,
             minutes: Math.floor(offlineMs / 60000),
             life: 180,
@@ -626,6 +770,7 @@ function loadGame() {
         normalizeGridCells();
         inventory = sanitizeInventory(saveData.inventory);
         marketState = Object.assign(createDefaultMarketState(), saveData.marketState);
+        normalizeMarketStateHistory();
         animals = saveData.animals || [];
         ranchBuildings = Object.assign({ coop: 0, sheepfold: 0, cowshed: 0, apiary: 0, pigpen: 0 }, saveData.ranchBuildings);
         processingBuildings = Object.assign({ mill: 0, ketchupFactory: 0, bakery: 0, dairy: 0 }, saveData.processingBuildings);
@@ -634,8 +779,9 @@ function loadGame() {
         weather = Object.assign({ type: 'sunny', changedAt: Date.now(), forcedUntil: 0 }, saveData.weather);
         talents = Object.assign({ agriculture: 0, husbandry: 0, industry: 0 }, saveData.talents);
         talentPoints = saveData.talentPoints || 0;
-        stats = Object.assign({ harvests: {}, resonances: 0, totalOfflineSeconds: 0, totalPlaySeconds: 0, ordersCompleted: 0, weatherSeen: {}, rainSkillUsed: false, visitorTalks: 0 }, saveData.stats);
+        stats = Object.assign({ harvests: {}, resonances: 0, totalOfflineSeconds: 0, totalPlaySeconds: 0, ordersCompleted: 0, weatherSeen: {}, rainSkillUsed: false, visitorTalks: 0, visitorArrival: {} }, saveData.stats);
         stats.weatherSeen = Object.assign({}, stats.weatherSeen);
+        stats.visitorArrival = Object.assign({}, stats.visitorArrival);
         miracleBonuses = Object.assign({ irrigation: false, barn: false }, saveData.miracleBonuses);
         collectionBonuses = Object.assign(createDefaultCollectionBonuses(), saveData.collectionBonuses);
         collectionBonuses.categoryGrowth = Object.assign({}, collectionBonuses.categoryGrowth);
@@ -660,6 +806,7 @@ function loadGame() {
         mutationState = Object.assign({ pending: {} }, saveData.mutationState);
         mutationState.pending = Object.assign({}, mutationState.pending);
         visitorState = Object.assign({}, saveData.visitorState);
+        affectionState = Object.assign({}, saveData.affectionState);
         miracleState = Object.assign({ irrigation: { stage: 0, completed: false }, barn: { stage: 0, completed: false } }, saveData.miracleState);
         miracleState.irrigation = Object.assign({ stage: 0, completed: false }, miracleState.irrigation);
         miracleState.barn = Object.assign({ stage: 0, completed: false }, miracleState.barn);
@@ -667,6 +814,7 @@ function loadGame() {
         endingState.unlocked = Object.assign({}, endingState.unlocked);
         endingState.read = Object.assign({}, endingState.read);
         if (saveData.audioEnabled !== undefined) audioEnabled = saveData.audioEnabled;
+        uiPreferences = Object.assign({ screenShake: true, autoSowEnabled: true, lastSeedTool: 'carrot' }, saveData.uiPreferences);
         if (saveData.skills) {
             skills.sow.lastUsed = saveData.skills.sow.lastUsed || 0;
             skills.sow.level = saveData.skills.sow.level || 1;
@@ -676,7 +824,13 @@ function loadGame() {
             skills.harvest.level = saveData.skills.harvest.level || 1;
         }
         tasks = sanitizeTasks(saveData.tasks);
+        orderState = Object.assign({ nextRefreshAt: 0 }, saveData.orderState);
         workers = saveData.workers || [];
+        workers = workers.filter((worker, index, list) => {
+            const limit = WORKER_LIMITS[worker.type] ?? Infinity;
+            return list.slice(0, index).filter(item => item.type === worker.type).length < limit;
+        });
+        droneUpgrades = normalizeDroneUpgrades(saveData.droneUpgrades);
         if (saveData.camX !== undefined) {
             camera.x = saveData.camX;
             camera.y = saveData.camY;
@@ -728,9 +882,24 @@ window.resetGame = function() {
             uiState.storyListPage = 0;
             uiState.activeVisitor = null;
             uiState.visitorDialog = null;
+            uiState.npcArrivalPopup = null;
             uiState.tileTip = null;
         }
         saveGame();
         if (typeof updateUI === 'function') updateUI();
     }
+};
+
+window.toggleScreenShake = function(force) {
+    uiPreferences.screenShake = force === undefined ? !uiPreferences.screenShake : !!force;
+    effectText = uiPreferences.screenShake ? '震动反馈已开启' : '震动反馈已关闭';
+    effectAlpha = 1.0;
+    saveGame();
+};
+
+window.toggleAutoSow = function(force) {
+    uiPreferences.autoSowEnabled = force === undefined ? uiPreferences.autoSowEnabled === false : !!force;
+    effectText = uiPreferences.autoSowEnabled === false ? '自动播种已关闭' : '自动播种已开启';
+    effectAlpha = 1.0;
+    saveGame();
 };

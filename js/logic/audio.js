@@ -3,6 +3,7 @@
 // ==========================================
 let audioEnabled = true;
 let audioCtx = null;
+let audioUnlocked = false;
 
 const SOUND_PATTERNS = {
     plant: [{ f: 420, t: 0.04, v: 0.05 }, { f: 560, t: 0.05, v: 0.04 }],
@@ -19,10 +20,30 @@ const SOUND_PATTERNS = {
 
 function getAudioContext() {
     if (!audioEnabled) return null;
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (!audioUnlocked) return null;
+    if (!audioCtx) {
+        const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextCtor) return null;
+        audioCtx = new AudioContextCtor();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+        return null;
+    }
     return audioCtx;
 }
+
+function unlockAudio() {
+    audioUnlocked = true;
+    getAudioContext();
+    window.removeEventListener('pointerdown', unlockAudio);
+    window.removeEventListener('keydown', unlockAudio);
+    window.removeEventListener('touchstart', unlockAudio);
+}
+
+window.addEventListener('pointerdown', unlockAudio, { once: true });
+window.addEventListener('keydown', unlockAudio, { once: true });
+window.addEventListener('touchstart', unlockAudio, { once: true });
 
 function playTone(ctx, frequency, startTime, duration, volume) {
     const osc = ctx.createOscillator();

@@ -1,0 +1,465 @@
+{
+  "generated_from": "assets/generated/review",
+  "sheets": {
+    "assets/generated/review/terrain_tiles_v2.png": [
+      "assets/generated/integration/terrain/01_grass_lush.png",
+      "assets/generated/integration/terrain/02_grass_flowers.png",
+      "assets/generated/integration/terrain/03_dirt_compact.png",
+      "assets/generated/integration/terrain/04_soil_tilled.png",
+      "assets/generated/integration/terrain/05_soil_wet.png",
+      "assets/generated/integration/terrain/06_rice_paddy_mud.png",
+      "assets/generated/integration/terrain/07_stone_path_narrow.png",
+      "assets/generated/integration/terrain/08_cobblestone_road.png",
+      "assets/generated/integration/terrain/09_pond_bank.png",
+      "assets/generated/integration/terrain/10_river_bank_curve.png",
+      "assets/generated/integration/terrain/11_canal_bank_edge.png",
+      "assets/generated/integration/terrain/12_canal_bank_corner.png",
+      "assets/generated/integration/terrain/13_field_divider_strip.png",
+      "assets/generated/integration/terrain/14_fence_shadow_strip.png",
+      "assets/generated/integration/terrain/15_building_footprint_pad.png",
+      "assets/generated/integration/terrain/16_bridge_stone_crossing.png"
+    ],
+    "assets/generated/review/irrigation_canal_tiles_v2.png": [
+      "assets/generated/integration/irrigation_tiles/01_canal_horizontal.png",
+      "assets/generated/integration/irrigation_tiles/02_canal_vertical.png",
+      "assets/generated/integration/irrigation_tiles/03_canal_corner_left.png",
+      "assets/generated/integration/irrigation_tiles/04_canal_corner_right.png",
+      "assets/generated/integration/irrigation_tiles/05_canal_t_junction.png",
+      "assets/generated/integration/irrigation_tiles/06_canal_t_up.png",
+      "assets/generated/integration/irrigation_tiles/07_canal_cross.png",
+      "assets/generated/integration/irrigation_tiles/08_canal_end_cap.png",
+      "assets/generated/integration/irrigation_tiles/09_sluice_gate.png",
+      "assets/generated/integration/irrigation_tiles/10_wood_plank_crossing.png",
+      "assets/generated/integration/irrigation_tiles/11_stone_bridge_crossing.png",
+      "assets/generated/integration/irrigation_tiles/12_field_side_trench.png",
+      "assets/generated/integration/irrigation_tiles/13_canal_beside_soil_left.png",
+      "assets/generated/integration/irrigation_tiles/14_canal_beside_soil_right.png",
+      "assets/generated/integration/irrigation_tiles/15_canal_beside_soil_bottom.png",
+      "assets/generated/integration/irrigation_tiles/16_canal_beside_soil_top.png"
+    ],
+    "assets/generated/review/farm_scene_props_v2.png": [
+      "assets/generated/integration/scene_props/01_tree_cluster_edge.png",
+      "assets/generated/integration/scene_props/02_broad_tree.png",
+      "assets/generated/integration/scene_props/03_conifer.png",
+      "assets/generated/integration/scene_props/04_pond_corner_shore.png",
+      "assets/generated/integration/scene_props/05_stone_bridge.png",
+      "assets/generated/integration/scene_props/06_wood_fence_straight.png",
+      "assets/generated/integration/scene_props/07_wood_fence_corner_gate.png",
+      "assets/generated/integration/scene_props/08_stone_road_straight.png",
+      "assets/generated/integration/scene_props/09_stone_road_corner.png",
+      "assets/generated/integration/scene_props/10_dirt_road_strip.png",
+      "assets/generated/integration/scene_props/11_haystack.png",
+      "assets/generated/integration/scene_props/12_blank_signboard.png",
+      "assets/generated/integration/scene_props/13_workshop_dirt_pad.png",
+      "assets/generated/integration/scene_props/14_ranch_pasture_patch.png",
+      "assets/generated/integration/scene_props/15_flower_bush_cluster.png",
+      "assets/generated/integration/scene_props/16_barrel_crate_cluster.png"
+    ]
+  },
+  "files": [
+    {
+      "type": "terrain",
+      "name": "grass_lush",
+      "path": "assets/generated/integration/terrain/01_grass_lush.png",
+      "source": "assets/generated/review/terrain_tiles_v2.png"
+    },
+    {
+      "type": "terrain",
+      "name": "grass_flowers",
+      "path": "assets/generated/integration/terrain/02_grass_flowers.png",
+      "source": "assets/generated/review/terrain_tiles_v2.png"
+    },
+    {
+      "type": "terrain",
+      "name": "dirt_compact",
+      "path": "assets/generated/integration/terrain/03_dirt_compact.png",
+      "source": "assets/generated/review/terrain_tiles_v2.png"
+    },
+    {
+      "type": "terrain",
+      "name": "soil_tilled",
+      "path": "assets/generated/integration/terrain/04_soil_tilled.png",
+      "source": "assets/generated/review/terrain_tiles_v2.png"
+    },
+    {
+      "type": "terrain",
+      "name": "soil_wet",
+      "path": "assets/generated/integration/terrain/05_soil_wet.png",
+      "source": "assets/generated/review/terrain_tiles_v2.png"
+    },
+    {
+      "type": "terrain",
+      "name": "rice_paddy_mud",
+      "path": "assets/generated/integration/terrain/06_rice_paddy_mud.png",
+      "source": "assets/generated/review/terrain_tiles_v2.png"
+    },
+    {
+      "type": "terrain",
+      "name": "stone_path_narrow",
+      "path": "assets/generated/integration/terrain/07_stone_path_narrow.png",
+      "source": "assets/generated/review/terrain_tiles_v2.png"
+    },
+    {
+      "type": "terrain",
+      "name": "cobblestone_road",
+      "path": "assets/generated/integration/terrain/08_cobblestone_road.png",
+      "source": "assets/generated/review/terrain_tiles_v2.png"
+    },
+    {
+      "type": "terrain",
+      "name": "pond_bank",
+      "path": "assets/generated/integration/terrain/09_pond_bank.png",
+      "source": "assets/generated/review/terrain_tiles_v2.png"
+    },
+    {
+      "type": "terrain",
+      "name": "river_bank_curve",
+      "path": "assets/generated/integration/terrain/10_river_bank_curve.png",
+      "source": "assets/generated/review/terrain_tiles_v2.png"
+    },
+    {
+      "type": "terrain",
+      "name": "canal_bank_edge",
+      "path": "assets/generated/integration/terrain/11_canal_bank_edge.png",
+      "source": "assets/generated/review/terrain_tiles_v2.png"
+    },
+    {
+      "type": "terrain",
+      "name": "canal_bank_corner",
+      "path": "assets/generated/integration/terrain/12_canal_bank_corner.png",
+      "source": "assets/generated/review/terrain_tiles_v2.png"
+    },
+    {
+      "type": "terrain",
+      "name": "field_divider_strip",
+      "path": "assets/generated/integration/terrain/13_field_divider_strip.png",
+      "source": "assets/generated/review/terrain_tiles_v2.png"
+    },
+    {
+      "type": "terrain",
+      "name": "fence_shadow_strip",
+      "path": "assets/generated/integration/terrain/14_fence_shadow_strip.png",
+      "source": "assets/generated/review/terrain_tiles_v2.png"
+    },
+    {
+      "type": "terrain",
+      "name": "building_footprint_pad",
+      "path": "assets/generated/integration/terrain/15_building_footprint_pad.png",
+      "source": "assets/generated/review/terrain_tiles_v2.png"
+    },
+    {
+      "type": "terrain",
+      "name": "bridge_stone_crossing",
+      "path": "assets/generated/integration/terrain/16_bridge_stone_crossing.png",
+      "source": "assets/generated/review/terrain_tiles_v2.png"
+    },
+    {
+      "type": "irrigation_tiles",
+      "name": "canal_horizontal",
+      "path": "assets/generated/integration/irrigation_tiles/01_canal_horizontal.png",
+      "source": "assets/generated/review/irrigation_canal_tiles_v2.png"
+    },
+    {
+      "type": "irrigation_tiles",
+      "name": "canal_vertical",
+      "path": "assets/generated/integration/irrigation_tiles/02_canal_vertical.png",
+      "source": "assets/generated/review/irrigation_canal_tiles_v2.png"
+    },
+    {
+      "type": "irrigation_tiles",
+      "name": "canal_corner_left",
+      "path": "assets/generated/integration/irrigation_tiles/03_canal_corner_left.png",
+      "source": "assets/generated/review/irrigation_canal_tiles_v2.png"
+    },
+    {
+      "type": "irrigation_tiles",
+      "name": "canal_corner_right",
+      "path": "assets/generated/integration/irrigation_tiles/04_canal_corner_right.png",
+      "source": "assets/generated/review/irrigation_canal_tiles_v2.png"
+    },
+    {
+      "type": "irrigation_tiles",
+      "name": "canal_t_junction",
+      "path": "assets/generated/integration/irrigation_tiles/05_canal_t_junction.png",
+      "source": "assets/generated/review/irrigation_canal_tiles_v2.png"
+    },
+    {
+      "type": "irrigation_tiles",
+      "name": "canal_t_up",
+      "path": "assets/generated/integration/irrigation_tiles/06_canal_t_up.png",
+      "source": "assets/generated/review/irrigation_canal_tiles_v2.png"
+    },
+    {
+      "type": "irrigation_tiles",
+      "name": "canal_cross",
+      "path": "assets/generated/integration/irrigation_tiles/07_canal_cross.png",
+      "source": "assets/generated/review/irrigation_canal_tiles_v2.png"
+    },
+    {
+      "type": "irrigation_tiles",
+      "name": "canal_end_cap",
+      "path": "assets/generated/integration/irrigation_tiles/08_canal_end_cap.png",
+      "source": "assets/generated/review/irrigation_canal_tiles_v2.png"
+    },
+    {
+      "type": "irrigation_tiles",
+      "name": "sluice_gate",
+      "path": "assets/generated/integration/irrigation_tiles/09_sluice_gate.png",
+      "source": "assets/generated/review/irrigation_canal_tiles_v2.png"
+    },
+    {
+      "type": "irrigation_tiles",
+      "name": "wood_plank_crossing",
+      "path": "assets/generated/integration/irrigation_tiles/10_wood_plank_crossing.png",
+      "source": "assets/generated/review/irrigation_canal_tiles_v2.png"
+    },
+    {
+      "type": "irrigation_tiles",
+      "name": "stone_bridge_crossing",
+      "path": "assets/generated/integration/irrigation_tiles/11_stone_bridge_crossing.png",
+      "source": "assets/generated/review/irrigation_canal_tiles_v2.png"
+    },
+    {
+      "type": "irrigation_tiles",
+      "name": "field_side_trench",
+      "path": "assets/generated/integration/irrigation_tiles/12_field_side_trench.png",
+      "source": "assets/generated/review/irrigation_canal_tiles_v2.png"
+    },
+    {
+      "type": "irrigation_tiles",
+      "name": "canal_beside_soil_left",
+      "path": "assets/generated/integration/irrigation_tiles/13_canal_beside_soil_left.png",
+      "source": "assets/generated/review/irrigation_canal_tiles_v2.png"
+    },
+    {
+      "type": "irrigation_tiles",
+      "name": "canal_beside_soil_right",
+      "path": "assets/generated/integration/irrigation_tiles/14_canal_beside_soil_right.png",
+      "source": "assets/generated/review/irrigation_canal_tiles_v2.png"
+    },
+    {
+      "type": "irrigation_tiles",
+      "name": "canal_beside_soil_bottom",
+      "path": "assets/generated/integration/irrigation_tiles/15_canal_beside_soil_bottom.png",
+      "source": "assets/generated/review/irrigation_canal_tiles_v2.png"
+    },
+    {
+      "type": "irrigation_tiles",
+      "name": "canal_beside_soil_top",
+      "path": "assets/generated/integration/irrigation_tiles/16_canal_beside_soil_top.png",
+      "source": "assets/generated/review/irrigation_canal_tiles_v2.png"
+    },
+    {
+      "type": "scene_props",
+      "name": "tree_cluster_edge",
+      "path": "assets/generated/integration/scene_props/01_tree_cluster_edge.png",
+      "source": "assets/generated/review/farm_scene_props_v2.png"
+    },
+    {
+      "type": "scene_props",
+      "name": "broad_tree",
+      "path": "assets/generated/integration/scene_props/02_broad_tree.png",
+      "source": "assets/generated/review/farm_scene_props_v2.png"
+    },
+    {
+      "type": "scene_props",
+      "name": "conifer",
+      "path": "assets/generated/integration/scene_props/03_conifer.png",
+      "source": "assets/generated/review/farm_scene_props_v2.png"
+    },
+    {
+      "type": "scene_props",
+      "name": "pond_corner_shore",
+      "path": "assets/generated/integration/scene_props/04_pond_corner_shore.png",
+      "source": "assets/generated/review/farm_scene_props_v2.png"
+    },
+    {
+      "type": "scene_props",
+      "name": "stone_bridge",
+      "path": "assets/generated/integration/scene_props/05_stone_bridge.png",
+      "source": "assets/generated/review/farm_scene_props_v2.png"
+    },
+    {
+      "type": "scene_props",
+      "name": "wood_fence_straight",
+      "path": "assets/generated/integration/scene_props/06_wood_fence_straight.png",
+      "source": "assets/generated/review/farm_scene_props_v2.png"
+    },
+    {
+      "type": "scene_props",
+      "name": "wood_fence_corner_gate",
+      "path": "assets/generated/integration/scene_props/07_wood_fence_corner_gate.png",
+      "source": "assets/generated/review/farm_scene_props_v2.png"
+    },
+    {
+      "type": "scene_props",
+      "name": "stone_road_straight",
+      "path": "assets/generated/integration/scene_props/08_stone_road_straight.png",
+      "source": "assets/generated/review/farm_scene_props_v2.png"
+    },
+    {
+      "type": "scene_props",
+      "name": "stone_road_corner",
+      "path": "assets/generated/integration/scene_props/09_stone_road_corner.png",
+      "source": "assets/generated/review/farm_scene_props_v2.png"
+    },
+    {
+      "type": "scene_props",
+      "name": "dirt_road_strip",
+      "path": "assets/generated/integration/scene_props/10_dirt_road_strip.png",
+      "source": "assets/generated/review/farm_scene_props_v2.png"
+    },
+    {
+      "type": "scene_props",
+      "name": "haystack",
+      "path": "assets/generated/integration/scene_props/11_haystack.png",
+      "source": "assets/generated/review/farm_scene_props_v2.png"
+    },
+    {
+      "type": "scene_props",
+      "name": "blank_signboard",
+      "path": "assets/generated/integration/scene_props/12_blank_signboard.png",
+      "source": "assets/generated/review/farm_scene_props_v2.png"
+    },
+    {
+      "type": "scene_props",
+      "name": "workshop_dirt_pad",
+      "path": "assets/generated/integration/scene_props/13_workshop_dirt_pad.png",
+      "source": "assets/generated/review/farm_scene_props_v2.png"
+    },
+    {
+      "type": "scene_props",
+      "name": "ranch_pasture_patch",
+      "path": "assets/generated/integration/scene_props/14_ranch_pasture_patch.png",
+      "source": "assets/generated/review/farm_scene_props_v2.png"
+    },
+    {
+      "type": "scene_props",
+      "name": "flower_bush_cluster",
+      "path": "assets/generated/integration/scene_props/15_flower_bush_cluster.png",
+      "source": "assets/generated/review/farm_scene_props_v2.png"
+    },
+    {
+      "type": "scene_props",
+      "name": "barrel_crate_cluster",
+      "path": "assets/generated/integration/scene_props/16_barrel_crate_cluster.png",
+      "source": "assets/generated/review/farm_scene_props_v2.png"
+    },
+    {
+      "type": "irrigation_stages",
+      "name": "irrigation_stage_01",
+      "path": "assets/generated/integration/irrigation_stages/irrigation_stage_01.png",
+      "source": "assets/generated/review/irrigation_stages/stage_01.png",
+      "original_size": [
+        1254,
+        1254
+      ],
+      "cropped_size": [
+        1138,
+        1159
+      ]
+    },
+    {
+      "type": "irrigation_stages",
+      "name": "irrigation_stage_02",
+      "path": "assets/generated/integration/irrigation_stages/irrigation_stage_02.png",
+      "source": "assets/generated/review/irrigation_stages/stage_02.png",
+      "original_size": [
+        1254,
+        1254
+      ],
+      "cropped_size": [
+        1195,
+        1184
+      ]
+    },
+    {
+      "type": "irrigation_stages",
+      "name": "irrigation_stage_03",
+      "path": "assets/generated/integration/irrigation_stages/irrigation_stage_03.png",
+      "source": "assets/generated/review/irrigation_stages/stage_03.png",
+      "original_size": [
+        1254,
+        1254
+      ],
+      "cropped_size": [
+        1142,
+        1166
+      ]
+    },
+    {
+      "type": "irrigation_stages",
+      "name": "irrigation_stage_04",
+      "path": "assets/generated/integration/irrigation_stages/irrigation_stage_04.png",
+      "source": "assets/generated/review/irrigation_stages/stage_04.png",
+      "original_size": [
+        1254,
+        1254
+      ],
+      "cropped_size": [
+        1226,
+        1114
+      ]
+    },
+    {
+      "type": "irrigation_stages",
+      "name": "irrigation_stage_05",
+      "path": "assets/generated/integration/irrigation_stages/irrigation_stage_05.png",
+      "source": "assets/generated/review/irrigation_stages/stage_05.png",
+      "original_size": [
+        1254,
+        1254
+      ],
+      "cropped_size": [
+        1217,
+        1161
+      ]
+    },
+    {
+      "type": "irrigation_stages",
+      "name": "irrigation_stage_06",
+      "path": "assets/generated/integration/irrigation_stages/irrigation_stage_06.png",
+      "source": "assets/generated/review/irrigation_stages/stage_06.png",
+      "original_size": [
+        1254,
+        1254
+      ],
+      "cropped_size": [
+        1206,
+        1170
+      ]
+    },
+    {
+      "type": "irrigation_stages",
+      "name": "irrigation_stage_07",
+      "path": "assets/generated/integration/irrigation_stages/irrigation_stage_07.png",
+      "source": "assets/generated/review/irrigation_stages/stage_07.png",
+      "original_size": [
+        1254,
+        1254
+      ],
+      "cropped_size": [
+        1254,
+        1198
+      ]
+    },
+    {
+      "type": "reference_full",
+      "name": "clean_farm_base_background_v2",
+      "path": "assets/generated/integration/clean_farm_base_background_v2.png",
+      "source": "assets/generated/review/clean_farm_base_background_v2.png"
+    },
+    {
+      "type": "reference_full",
+      "name": "farm_map_background_v2",
+      "path": "assets/generated/integration/farm_map_background_v2.png",
+      "source": "assets/generated/review/farm_map_background_v2.png"
+    },
+    {
+      "type": "reference_full",
+      "name": "irrigation_field_overlay_v2",
+      "path": "assets/generated/integration/irrigation_field_overlay_v2.png",
+      "source": "assets/generated/review/irrigation_field_overlay_v2.png"
+    }
+  ]
+}

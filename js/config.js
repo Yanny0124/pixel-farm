@@ -1,14 +1,18 @@
 // ==========================================
 // 地图与物理常量
 // ==========================================
-const TILE_SIZE = 45; 
-const ROWS = 16; const COLS = 16;
+const TILE_SIZE = 26;
+const FARM_PLOT_SIZE = 7;
+const ROWS = FARM_PLOT_SIZE * 2; const COLS = FARM_PLOT_SIZE * 2;
+const FARM_PLOT_GAP = 31;
+const WORLD_VIEW_FARM_SCREEN_X = 342;
+const WORLD_VIEW_FARM_SCREEN_Y = 122;
 
-const farmStartX = 100; const farmStartY = 150;
+const farmStartX = 374; const farmStartY = 128;
 const gridWidth = COLS * TILE_SIZE; const gridHeight = ROWS * TILE_SIZE; 
 
-const ranchStartX = farmStartX + gridWidth + 200; const ranchStartY = 150;
-const ranchWidth = 600; const ranchHeight = 600;
+const ranchStartX = 858; const ranchStartY = 102;
+const ranchWidth = 334; const ranchHeight = 366;
 
 const crossroadX = farmStartX + gridWidth + 100; 
 const crossroadY = farmStartY + gridHeight / 2;
@@ -19,6 +23,19 @@ const WEATHER_CHANGE_INTERVAL = 60 * 60 * 1000;
 const RAIN_SKILL_DURATION = 15 * 60 * 1000;
 const RAIN_SKILL_BASE_CD = 2 * 60 * 60 * 1000;
 const CROP_GROW_TIME_SCALE = 0.05;
+
+const WORKER_LIMITS = { human: 5, drone: 1 };
+const DRONE_UPGRADE_CONFIG = {
+    speed: { name: '巡航引擎', maxLevel: 5, baseCost: 900, costStep: 650, bonusPerLevel: 0.35 },
+    efficiency: { name: '作业模块', maxLevel: 5, baseCost: 1100, costStep: 800, cooldownReduction: 24 },
+    cargo: { name: '收纳挂架', maxLevel: 3, baseCost: 1400, costStep: 1000, offlinePower: 8 }
+};
+const FARM_PLOTS = [
+    { id: 'northWest', name: '西北田', row: 0, col: 0, rows: FARM_PLOT_SIZE, cols: FARM_PLOT_SIZE, color: 'rgba(107, 142, 83, 0.50)' },
+    { id: 'northEast', name: '东北田', row: 0, col: FARM_PLOT_SIZE, rows: FARM_PLOT_SIZE, cols: FARM_PLOT_SIZE, color: 'rgba(84, 126, 152, 0.46)' },
+    { id: 'southWest', name: '西南田', row: FARM_PLOT_SIZE, col: 0, rows: FARM_PLOT_SIZE, cols: FARM_PLOT_SIZE, color: 'rgba(173, 124, 57, 0.44)' },
+    { id: 'southEast', name: '东南田', row: FARM_PLOT_SIZE, col: FARM_PLOT_SIZE, rows: FARM_PLOT_SIZE, cols: FARM_PLOT_SIZE, color: 'rgba(142, 94, 132, 0.42)' }
+];
 
 // ==========================================
 // 游戏配置字典 (核心数值策划都在这里)
@@ -116,7 +133,7 @@ const RANCH_BUILDING_CONFIG = {
         maxLevel: 4,
         capacityPerLevel: 4,
         bonusPerLevel: 0.08,
-        x: ranchStartX + 44,
+        x: ranchStartX + 34,
         y: ranchStartY + 44,
         w: 128,
         h: 92,
@@ -132,7 +149,7 @@ const RANCH_BUILDING_CONFIG = {
         maxLevel: 4,
         capacityPerLevel: 4,
         bonusPerLevel: 0.08,
-        x: ranchStartX + 218,
+        x: ranchStartX + 192,
         y: ranchStartY + 44,
         w: 132,
         h: 92,
@@ -148,7 +165,7 @@ const RANCH_BUILDING_CONFIG = {
         maxLevel: 4,
         capacityPerLevel: 3,
         bonusPerLevel: 0.09,
-        x: ranchStartX + 396,
+        x: ranchStartX + 348,
         y: ranchStartY + 44,
         w: 142,
         h: 96,
@@ -164,8 +181,8 @@ const RANCH_BUILDING_CONFIG = {
         maxLevel: 3,
         capacityPerLevel: 3,
         bonusPerLevel: 0.1,
-        x: ranchStartX + 60,
-        y: ranchStartY + 430,
+        x: ranchStartX + 56,
+        y: ranchStartY + 352,
         w: 110,
         h: 82,
         color: '#f1c40f'
@@ -180,8 +197,8 @@ const RANCH_BUILDING_CONFIG = {
         maxLevel: 3,
         capacityPerLevel: 3,
         bonusPerLevel: 0.1,
-        x: ranchStartX + 394,
-        y: ranchStartY + 414,
+        x: ranchStartX + 342,
+        y: ranchStartY + 344,
         w: 132,
         h: 92,
         color: '#f5b7c8'
@@ -199,10 +216,10 @@ const PROCESSING_BUILDING_CONFIG = {
         maxLevel: 4,
         speedBonusPerLevel: 0.08,
         recipes: ['flour', 'popcorn', 'sugar'],
-        x: crossroadX - 70,
-        y: farmStartY + 70,
-        w: 116,
-        h: 104,
+        x: farmStartX + 58,
+        y: farmStartY + gridHeight + 46,
+        w: 172,
+        h: 132,
         color: '#d8b26e'
     },
     ketchupFactory: {
@@ -215,10 +232,10 @@ const PROCESSING_BUILDING_CONFIG = {
         maxLevel: 4,
         speedBonusPerLevel: 0.08,
         recipes: ['ketchup', 'fries', 'sunflowerSeed', 'sunflowerOil', 'cloth'],
-        x: crossroadX - 72,
-        y: farmStartY + 214,
-        w: 122,
-        h: 106,
+        x: farmStartX + 286,
+        y: farmStartY + gridHeight + 46,
+        w: 172,
+        h: 132,
         color: '#d76a62'
     },
     bakery: {
@@ -231,10 +248,10 @@ const PROCESSING_BUILDING_CONFIG = {
         maxLevel: 4,
         speedBonusPerLevel: 0.08,
         recipes: ['bread', 'pumpkinPie'],
-        x: crossroadX - 72,
-        y: farmStartY + 360,
-        w: 122,
-        h: 104,
+        x: farmStartX + 514,
+        y: farmStartY + gridHeight + 46,
+        w: 172,
+        h: 132,
         color: '#e9c46a'
     },
     dairy: {
@@ -247,10 +264,10 @@ const PROCESSING_BUILDING_CONFIG = {
         maxLevel: 4,
         speedBonusPerLevel: 0.08,
         recipes: ['cheese'],
-        x: crossroadX - 72,
-        y: farmStartY + 506,
-        w: 122,
-        h: 104,
+        x: farmStartX + 742,
+        y: farmStartY + gridHeight + 46,
+        w: 172,
+        h: 132,
         color: '#f4d35e'
     }
 };
@@ -555,6 +572,7 @@ const STORY_LETTERS = [
 
 const VISITOR_CONFIG = {
     leo: {
+        portrait: 'assets/npc/leo.png',
         name: '雷欧',
         icon: '👨‍🍳',
         role: '流浪厨师',
@@ -571,6 +589,7 @@ const VISITOR_CONFIG = {
         ]
     },
     lia: {
+        portrait: 'assets/npc/lia.png',
         name: '莉亚',
         icon: '👩‍🔬',
         role: '植物学家',
@@ -586,6 +605,7 @@ const VISITOR_CONFIG = {
         ]
     },
     bruno: {
+        portrait: 'assets/npc/bruno.png',
         name: '布鲁诺',
         icon: '👷',
         role: '建筑匠人',
@@ -600,11 +620,12 @@ const VISITOR_CONFIG = {
         ]
     },
     amir: {
+        portrait: 'assets/npc/amir.png',
         name: '阿米尔',
         icon: '🧳',
         role: '旅行商人',
-        unlockHint: '在线90分钟后不定期到访',
-        unlock: () => (stats.totalPlaySeconds || 0) >= 90 * 60,
+        unlockHint: '在线90分钟后开始随机到访，最多再等30分钟保底',
+        unlock: () => hasVisitorArrivedBySchedule('amir'),
         daily: ['价格会说话，只是说得不一定诚实。', '我喜欢加工品，也喜欢稀缺的动物产物。', '手里留一点现金，机会来时才抓得住。'],
         chain: [
             { title: '第一次以物易物', need: { strawberry: 5, milk: 3 }, reward: { codexNote: '远方之种', exp: 160 }, text: '我从山谷那边来。那边的土是红色的。种茶，不种麦。' },
@@ -649,24 +670,144 @@ const ENDING_CONFIG = {
         title: '丰收之乡',
         icon: '🌾',
         condition: () => miracleState.irrigation?.completed && getCollectedUniqueCount() >= 12,
-        text: ['水渠重新流动，田地不再怕旱。', '这里终于又成了能养活许多人的丰收之乡。']
+        text: ['水渠重新流动，田地不再怕旱。', '这里终于又成了能养活许多人的丰收之乡。'],
+        longTitle: '丰收之乡',
+        longText: [
+            '水渠重新流动的那天，农场没有立刻变得喧闹。它只是安静地亮了一会儿，像一只从旧梦里醒来的眼睛。',
+            '第一道水流越过碎石，经过胡萝卜叶、麦秆和番茄架，最后停在田埂边的低洼处。泥土吸水的声音很轻，但你听见了。那声音像在说：这里还能继续。',
+            '镇上的人后来开始把这里叫作丰收之乡。这个名字听起来有点夸张，甚至有点像集市上卖种子的广告词。可当旱季过去，田地仍旧绿着的时候，没人再笑。',
+            '你站在水渠边，看见许多曾经只存在于计划表里的东西真的留下来了：作物、脚印、来帮忙的人，还有那些被你写进手札的普通日子。',
+            '这不是一个宏大的胜利。它只是证明，一片土地被认真照看时，确实会慢慢回答你。'
+        ],
+        epilogueTitle: '水渠后的清晨',
+        epilogue: [
+            '结局之后，农场没有停止运转。水渠每天清晨都会发出很轻的水声，像有人在地底翻动旧日历。',
+            '雨后的第一束光落在渠水上时，田地边会闪一下蓝色。你很难说那是不是奇迹，但作物长得确实更有底气了。'
+        ],
+        continueHint: '继续经营后，丰收之乡会成为后日谈记录的一部分。你可以继续补完作物、订单和奇迹周边目标。',
+        reward: { coins: 2400, exp: 900, talentPoints: 1 }
     },
     warmInn: {
         title: '温暖旅店',
         icon: '🏡',
         condition: () => getVisitorIds().every(id => getVisitorProgress(id).finished),
-        text: ['访客们不再只是路过。', '他们把故事、手艺和日常都留在了农场。']
+        text: ['访客们不再只是路过。', '他们把故事、手艺和日常都留在了农场。'],
+        longTitle: '温暖旅店',
+        longText: [
+            '最后一位访客决定留下时，农场的傍晚变得比以前更长。并不是太阳真的慢了下来，而是有人开始在门口停步，愿意把今天没说完的话留到明天。',
+            '雷欧把旧木箱修成了长凳，莉亚在窗边摆了一排番茄苗，布鲁诺坚持说厨房里的锅应该按大小排队，阿米尔则把一本你没见过的书塞进了手札架最上层。',
+            '他们都不是被农场拯救的人。更准确地说，他们只是路过这里，然后发现自己可以不用继续赶路。',
+            '某天夜里下雨，屋檐滴水，桌上的灯晃了一下。你听见有人在笑，有人在抱怨汤太淡，有人在问明天要不要多种一块麦子。',
+            '你忽然明白，所谓温暖并不是没有风雨，而是风雨来的时候，屋里有人给你留了位置。'
+        ],
+        epilogueTitle: '留下的人',
+        epilogue: [
+            '结局之后，餐桌旁多了几把椅子。有人带来远方的盐，有人修补旧篱笆，有人在雨天讲笑话。',
+            '农场不再只是你继承的地方，它变成了别人愿意回来的地方。'
+        ],
+        continueHint: '继续经营后，访客对话和后日谈目标会继续推进。多和入驻访客说话，别把人家当会走路的任务板，虽然游戏确实经常这么干。',
+        reward: { coins: 1800, exp: 700, talentPoints: 2 }
     },
     guildFarm: {
         title: '农场工坊',
         icon: '⚙️',
         condition: () => miracleState.barn?.completed && Object.values(processingBuildings || {}).every(level => level > 0),
-        text: ['谷仓与工坊连成了一条稳定的加工线。', '这座农场开始向整个镇子供应可靠的产品。']
+        text: ['谷仓与工坊连成了一条稳定的加工线。', '这座农场开始向整个镇子供应可靠的产品。'],
+        longTitle: '农场工坊',
+        longText: [
+            '永恒谷仓落成之后，农场的夜晚第一次没有完全安静下来。磨坊低声转着，烤炉里余温未散，奶酪桶在角落慢慢发酵，番茄酱锅偶尔冒出一个很有主见的泡。',
+            '你曾经以为工坊会让农场变得冰冷，像某种只会计算产量的机器。后来你发现不是这样。机器声也可以像心跳，只要它不是为了吞掉生活，而是为了让生活更稳一点。',
+            '镇上的订单越来越远。有人订面包，有人订奶酪，有人坚持认为你的番茄酱有“故乡的味道”，尽管他本人从没来过这里。人类的评价系统一如既往地离谱，但金币是真的。',
+            '你把最后一批货装好，回头看见谷仓灯光落在田地边。这里仍然有泥土、鸡叫、坏天气和做不完的活。只是现在，它们被一条更可靠的生产线连了起来。',
+            '农场没有变成工厂。它只是终于学会，把辛苦变成可以分享的东西。'
+        ],
+        epilogueTitle: '不熄的炉火',
+        epilogue: [
+            '结局之后，工坊的灯总是最晚熄灭。磨坊、烤炉、奶酪桶和番茄酱锅像四个固执的小太阳。',
+            '你开始收到更远地方的订单。农场仍然是农场，但也成了一座小小的工会。'
+        ],
+        continueHint: '继续经营后，加工链和订单仍可扩展。把所有建筑升到更高等级，会让这座农场更像一台温柔但高效的怪物。',
+        reward: { coins: 3200, exp: 1000, talentPoints: 1 }
     },
     completeJournal: {
         title: '手札圆满',
         icon: '📖',
         condition: () => getCollectedUniqueCount() >= getCodexTotalCount() && Object.keys(endingState.unlocked || {}).length >= 3,
-        text: ['你终于把这片土地的大多数秘密都写进了手札。', '但圆满不是结束，只是下一轮经营的底气。']
+        text: ['你终于把这片土地的大多数秘密都写进了手札。', '但圆满不是结束，只是下一轮经营的底气。'],
+        longTitle: '手札圆满',
+        longText: [
+            '你写下最后一个条目的时候，手札没有发光，也没有从天而降一只负责颁奖的鸽子。它只是变重了一点。',
+            '每一种作物、每一种产物、每一段访客留下的话、每一次奇迹推进时的材料清单，都被你用并不总是工整的字记了下来。',
+            '这本手札最开始像任务表，后来像账本，再后来像一本不肯承认自己是日记的日记。它记录了收获，也记录了等待；记录了成功，也记录了很多次金币不足。伟大农业史里当然少不了贫穷，这很现实，烦人，但现实。',
+            '当你合上它时，封皮边缘已经被磨软。你以为圆满意味着写完，结果发现圆满只是让你知道：还有很多东西可以继续写。',
+            '阿尔伯特留下的字迹停在过去，而你的记录继续向前。手札没有结束，它只是终于把这片土地交还给明天。'
+        ],
+        epilogueTitle: '最后一页之后',
+        epilogue: [
+            '结局之后，手札没有合上。空白页反而更多了，像这本书终于承认自己永远写不完。',
+            '你已经知道这片土地的大多数秘密。剩下的，就只能靠下一天继续长出来。'
+        ],
+        continueHint: '继续经营后，手札圆满会成为永久归档。全结局收集后，会出现最后的年轮结局。',
+        reward: { coins: 5000, exp: 1500, talentPoints: 3 }
+    },
+    newRing: {
+        title: '新的年轮',
+        icon: '🕰️',
+        condition: () => ['harvestHome', 'warmInn', 'guildFarm', 'completeJournal'].every(id => endingState.unlocked?.[id]),
+        text: ['四种未来都已经在农场里留下痕迹。', '你没有选定一个结局，而是让它们一起成为新的日常。'],
+        longTitle: '新的年轮',
+        longText: [
+            '当最后一个结局被写进手札，农场反而显得异常普通。田地里仍有作物等着收，市场仍旧涨涨跌跌，鸡还是会在完全不合适的时候叫。',
+            '你曾经以为结局会像一道门，走过去以后，身后的世界就会合上。可这里的结局更像树的年轮。它不是停止，而是说明这棵树又活过了一季。',
+            '丰收之乡、温暖旅店、农场工坊、手札圆满。每一种未来都没有取代另一种，它们叠在一起，变成这片土地更厚的一层记忆。',
+            '你可以继续留在这里，把后日谈写得更长。也可以在某个清晨收拾行囊，开启新的年轮。到那时，农场会重新变小，金币会重新紧张，地块会重新等待开垦。生活真会挑时间装作第一次见面。',
+            '但这一次，你不是空手开始。土地会记得你，手札会记得你，而下一次春天，也会比第一次更加温柔。'
+        ],
+        epilogueTitle: '没有落幕',
+        epilogue: [
+            '结局之后，清晨照常到来。鸡叫得很吵，订单来得很急，田地里又有一块作物熟了。',
+            '你忽然明白，最好的终章不是停在某一页，而是让下一天看起来仍然值得开始。'
+        ],
+        continueHint: '全结局已经归档。你可以继续经营当前农场，也可以开启新的年轮，重置主要进度并继承年轮祝福。',
+        reward: { coins: 10000, exp: 2500, talentPoints: 5 }
     }
+};
+
+const POST_ENDING_GOALS = {
+    archiveAllEndings: {
+        title: '终章归档',
+        icon: '🏆',
+        condition: () => Object.keys(ENDING_CONFIG).every(id => endingState.unlocked?.[id]),
+        progressText: () => `本轮结局 ${Object.keys(ENDING_CONFIG).filter(id => endingState.unlocked?.[id]).length}/${Object.keys(ENDING_CONFIG).length}`,
+        reward: { coins: 12000, exp: 3000, talentPoints: 3 },
+        text: '把所有结局收入手札后，农场获得完整终章归档。'
+    },
+    generousHost: {
+        title: '不打烊的餐桌',
+        icon: '🍲',
+        condition: () => (stats.visitorTalks || 0) >= 30,
+        progressText: () => `访客对话 ${stats.visitorTalks || 0}/30`,
+        reward: { coins: 3600, exp: 1200, talentPoints: 1 },
+        text: '结局之后仍有人来，也仍有人愿意坐下说话。'
+    },
+    oldFieldMaster: {
+        title: '旧田新季',
+        icon: '🌱',
+        condition: () => Object.values(stats.harvests || {}).reduce((sum, value) => sum + value, 0) >= 1000,
+        progressText: () => `总收获 ${Object.values(stats.harvests || {}).reduce((sum, value) => sum + value, 0)}/1000`,
+        reward: { coins: 6000, exp: 2000, talentPoints: 2 },
+        text: '无论出现多少结局，田还是要种。这很荒谬，也很可靠。'
+    }
+};
+
+const YEAR_RING_CONFIG = {
+    maxStacks: 5,
+    perStack: {
+        growth: 0.05,
+        price: 0.05,
+        exp: 0.08,
+        processing: 0.08,
+        startingCoins: 300
+    },
+    summary: '新的年轮会重置主要经营进度，但永久归档会保留，并获得可叠加的年轮祝福。'
 };

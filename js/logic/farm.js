@@ -57,7 +57,17 @@ function findCellPosition(targetCell) {
 function canReserveLargeCrop(row, col) {
     if (row === null || col === null || row === undefined || col === undefined) return false;
     if (row >= ROWS - 1 || col >= COLS - 1) return false;
+    if (!isLargeCropWithinFarmPlot(row, col)) return false;
     return [[0, 0], [0, 1], [1, 0], [1, 1]].every(([dr, dc]) => gridData[row + dr]?.[col + dc]?.state === 0);
+}
+
+function isLargeCropWithinFarmPlot(row, col) {
+    const plotSize = typeof FARM_PLOT_SIZE !== 'undefined' ? FARM_PLOT_SIZE : Math.floor(COLS / 2);
+    const startPlotCol = Math.floor(col / plotSize);
+    const endPlotCol = Math.floor((col + 1) / plotSize);
+    const startPlotRow = Math.floor(row / plotSize);
+    const endPlotRow = Math.floor((row + 1) / plotSize);
+    return startPlotCol === endPlotCol && startPlotRow === endPlotRow;
 }
 
 function reserveLargeCrop(row, col, cropType, now) {
@@ -77,11 +87,13 @@ function harvestCell(row, col, allowResonance = true, options = {}) {
     if (cell.state !== 2 || !cell.cropType) return 0;
     const cropType = cell.cropType;
     let targets = [{ row, col }];
+    let resonanceTriggered = false;
 
     if (allowResonance) {
         const cluster = findMatureCluster(row, col, cropType);
         if (cluster.length >= 3 && Math.random() < getResonanceChance()) {
             targets = cluster;
+            resonanceTriggered = true;
             stats.resonances = (stats.resonances || 0) + 1;
             effectText = `✨ 邻接共振！连收 ${cluster.length} 株 ${CROP_CONFIG[cropType].name}`;
             effectAlpha = 1.0;
@@ -90,6 +102,11 @@ function harvestCell(row, col, allowResonance = true, options = {}) {
     }
 
     let expGained = 0;
+    let harvestedAmount = 0;
+    let harvestedCells = 0;
+    let resonanceEffectsSpawned = 0;
+    const resonanceEffectLimit = resonanceTriggered ? Math.min(24, targets.length) : targets.length;
+    const resonanceEffectStep = resonanceTriggered && resonanceEffectLimit > 0 ? Math.max(1, Math.ceil(targets.length / resonanceEffectLimit)) : 1;
     for (const target of targets) {
         const targetCell = gridData[target.row][target.col];
         if (targetCell.state !== 2 || targetCell.cropType !== cropType) continue;
@@ -106,31 +123,48 @@ function harvestCell(row, col, allowResonance = true, options = {}) {
         if (woodDrop > 0) {
             inventory.wood = (inventory.wood || 0) + woodDrop;
             markCollected('wood', woodDrop);
-            floatingTexts.push({
-                x: farmStartX + target.col * TILE_SIZE + TILE_SIZE / 2,
-                y: farmStartY + target.row * TILE_SIZE + 6,
+            if (!options.quiet) addFloatingText({
+                x: (typeof getFarmTileWorldX === 'function' ? getFarmTileWorldX(target.col) : farmStartX + target.col * TILE_SIZE) + TILE_SIZE / 2,
+                y: (typeof getFarmTileWorldY === 'function' ? getFarmTileWorldY(target.row) : farmStartY + target.row * TILE_SIZE) + 6,
                 text: `+${woodDrop}🪵`,
                 life: 90,
                 color: '#8d6e63'
             });
         }
         markCollected(cropType, amount);
+        harvestedAmount += amount;
+        harvestedCells++;
         expGained += config.exp * amount;
         stats.harvests[cropType] = (stats.harvests[cropType] || 0) + amount;
         if (cropType === 'lavender' && isDeepNight()) stats.nightLavenderHarvests = (stats.nightLavenderHarvests || 0) + amount;
-        spawnHarvestEffects(target.row, target.col, config, options);
+        if (!resonanceTriggered || (resonanceEffectsSpawned < resonanceEffectLimit && harvestedCells % resonanceEffectStep === 1)) {
+            spawnHarvestEffects(target.row, target.col, config, resonanceTriggered ? Object.assign({}, options, { bulk: true, particleCount: 2 }) : options);
+            resonanceEffectsSpawned++;
+        }
         targetCell.state = 0;
         targetCell.cropType = null;
         clearLargeCropPlaceholders(target.row, target.col);
     }
 
+    if (resonanceTriggered && harvestedAmount > 0 && !options.quiet) {
+        addFloatingText({
+            x: (typeof getFarmTileWorldX === 'function' ? getFarmTileWorldX(col) : farmStartX + col * TILE_SIZE) + TILE_SIZE / 2,
+            y: (typeof getFarmTileWorldY === 'function' ? getFarmTileWorldY(row) : farmStartY + row * TILE_SIZE) - 4,
+            text: `+${CROP_CONFIG[cropType].icon} x${harvestedAmount}`,
+            life: 105,
+            color: '#f1c40f'
+        });
+    }
     if (expGained > 0) addExp(expGained);
     if (expGained > 0) {
-        tryDiscoverVariant(cropType, targets.length);
-        playSound(targets.length > 1 ? 'resonance' : 'harvest');
-        recordDiary(`收获 ${CROP_CONFIG[cropType].name} x${targets.length}`);
+        const discoveredVariant = tryDiscoverVariant(cropType, targets.length);
+        applyHarvestShake(cropType, { resonanceTriggered, discoveredVariant, options });
+        if (!options.quiet) {
+            playSound(targets.length > 1 ? 'resonance' : 'harvest');
+            recordDiary(`收获 ${CROP_CONFIG[cropType].name} x${targets.length}`);
+        }
     }
-    return targets.length;
+    return harvestedCells;
 }
 
 function rollHarvestWoodDrop(cropType, amount) {
@@ -146,6 +180,27 @@ function rollHarvestWoodDrop(cropType, amount) {
     return wood;
 }
 
+function applyHarvestShake(cropType, context) {
+    if (context.options?.quiet) return;
+    if (context.resonanceTriggered) {
+        triggerScreenShake(130, 2.1, context.options);
+        return;
+    }
+    if (context.discoveredVariant) {
+        triggerScreenShake(95, 1.35, context.options);
+        return;
+    }
+    if (isHighValueHarvest(cropType)) {
+        triggerScreenShake(60, 0.75, context.options);
+    }
+}
+
+function isHighValueHarvest(cropType) {
+    const config = CROP_CONFIG[cropType];
+    if (!config) return false;
+    return !!config.rarity || config.basePrice >= 50 || !!config.noSell;
+}
+
 function clearLargeCropPlaceholders(row, col) {
     [[0, 1], [1, 0], [1, 1]].forEach(([dr, dc]) => {
         const cell = gridData[row + dr]?.[col + dc];
@@ -159,19 +214,21 @@ function clearLargeCropPlaceholders(row, col) {
 
 function tryDiscoverVariant(cropType, harvestedCount) {
     const progress = getVariantProgress(cropType);
-    if (progress.total === 0 || progress.found >= progress.total) return;
+    if (progress.total === 0 || progress.found >= progress.total) return false;
     const next = progress.variants.find(variant => isVariantReady(cropType, variant) && !(collection.variants[cropType] || {})[variant.id]);
-    if (!next) return;
+    if (!next) return false;
     let chance = next.chance || 0;
     chance += collectionBonuses.variantChance || 0;
     const finalChance = chance >= 1 ? 1 : Math.min(0.18, chance);
-    if (Math.random() > finalChance) return;
+    if (Math.random() > finalChance) return false;
     if (markVariantCollected(cropType, next.id)) {
         mutationState.pending[cropType] = next.cropId;
         effectText = `图鉴发现：${next.name}`;
         effectAlpha = 1.0;
         recordDiary(`发现变种：${next.name}`);
+        return true;
     }
+    return false;
 }
 
 function isVariantReady(cropType, variant) {
@@ -188,9 +245,10 @@ function isDeepNight() {
 function findMatureCluster(row, col, cropType) {
     const visited = new Set();
     const queue = [{ row, col }];
+    let head = 0;
     const cluster = [];
-    while (queue.length > 0) {
-        const node = queue.shift();
+    while (head < queue.length) {
+        const node = queue[head++];
         const key = `${node.row},${node.col}`;
         if (visited.has(key)) continue;
         visited.add(key);

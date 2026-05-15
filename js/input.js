@@ -7,6 +7,51 @@ let lastMouseY = 0;
 let isSpacebarDown = false;
 let touchState = null;
 let touchInfoTimer = null;
+const ANIMAL_TOOL_IDS = ['chicken', 'sheep', 'cow', 'bee', 'pig'];
+const MIN_CAMERA_PAN_ZOOM = 1.01;
+
+function getDefaultCameraPosition() {
+    const anchorX = typeof WORLD_VIEW_FARM_SCREEN_X !== 'undefined' ? WORLD_VIEW_FARM_SCREEN_X : 50;
+    const anchorY = typeof WORLD_VIEW_FARM_SCREEN_Y !== 'undefined' ? WORLD_VIEW_FARM_SCREEN_Y : 50;
+    return {
+        x: -(farmStartX - anchorX),
+        y: -(farmStartY - anchorY)
+    };
+}
+
+function canPanCamera() {
+    return (camera.zoom || 1) > MIN_CAMERA_PAN_ZOOM;
+}
+
+function clampCameraToView() {
+    const zoom = camera.zoom || 1;
+    const fixed = getDefaultCameraPosition();
+    if (zoom <= MIN_CAMERA_PAN_ZOOM) {
+        camera.zoom = 1;
+        camera.x = fixed.x;
+        camera.y = fixed.y;
+        return;
+    }
+    const viewW = canvas?.width || 1600;
+    const viewH = canvas?.height || 900;
+    const anchorX = typeof WORLD_VIEW_FARM_SCREEN_X !== 'undefined' ? WORLD_VIEW_FARM_SCREEN_X : 50;
+    const anchorY = typeof WORLD_VIEW_FARM_SCREEN_Y !== 'undefined' ? WORLD_VIEW_FARM_SCREEN_Y : 50;
+    const defaultLeft = farmStartX - anchorX;
+    const defaultTop = farmStartY - anchorY;
+    const defaultRight = defaultLeft + viewW;
+    const defaultBottom = defaultTop + viewH;
+    const centerX = viewW / 2;
+    const centerY = viewH / 2;
+    const visibleW = viewW / zoom;
+    const visibleH = viewH / zoom;
+    const cameraXMin = centerX * (1 - 1 / zoom) - (defaultRight - visibleW);
+    const cameraXMax = centerX * (1 - 1 / zoom) - defaultLeft;
+    const cameraYMin = centerY * (1 - 1 / zoom) - (defaultBottom - visibleH);
+    const cameraYMax = centerY * (1 - 1 / zoom) - defaultTop;
+    camera.x = Math.max(cameraXMin, Math.min(cameraXMax, camera.x));
+    camera.y = Math.max(cameraYMin, Math.min(cameraYMax, camera.y));
+}
+window.clampCameraToView = clampCameraToView;
 
 function bindInput() {
     window.addEventListener('keydown', (e) => {
@@ -27,6 +72,9 @@ function bindInput() {
         }
     });
     canvas.addEventListener('contextmenu', e => e.preventDefault());
+    canvas.addEventListener('auxclick', e => {
+        if (e.button === 1) e.preventDefault();
+    });
     canvas.addEventListener('mousedown', handleCanvasMouseDown);
     canvas.addEventListener('wheel', handleCanvasWheel, { passive: false });
     canvas.addEventListener('touchstart', handleCanvasTouchStart, { passive: false });
@@ -39,10 +87,89 @@ function bindInput() {
 window.selectTool = function(toolId) {
     if (CROP_CONFIG[toolId] && !isItemUnlocked(toolId)) return;
     currentSelectedTool = toolId;
+    if (isSeedTool(toolId) && typeof uiPreferences !== 'undefined') {
+        uiPreferences.lastSeedTool = toolId;
+        if (typeof saveGame === 'function') saveGame();
+    }
 };
+
+function isAnimalTool(toolId) {
+    return ANIMAL_TOOL_IDS.includes(toolId);
+}
+
+function isSeedTool(toolId) {
+    return CROP_CONFIG[toolId]?.seedPrice !== undefined;
+}
+
+function getFarmPlotGap() {
+    return typeof FARM_PLOT_GAP !== 'undefined' ? FARM_PLOT_GAP : 0;
+}
+
+function getFarmVisualWidth() {
+    return gridWidth + getFarmPlotGap();
+}
+
+function getFarmVisualHeight() {
+    return gridHeight + getFarmPlotGap();
+}
+
+function getFarmCellAtWorld(worldX, worldY) {
+    const localX = worldX - farmStartX;
+    const localY = worldY - farmStartY;
+    if (localX < 0 || localY < 0 || localX > getFarmVisualWidth() || localY > getFarmVisualHeight()) return null;
+    const gap = getFarmPlotGap();
+    const plotSize = typeof FARM_PLOT_SIZE !== 'undefined' ? FARM_PLOT_SIZE : Math.floor(COLS / 2);
+    const halfW = plotSize * TILE_SIZE;
+    const halfH = plotSize * TILE_SIZE;
+    let colOffset = 0;
+    let rowOffset = 0;
+    let tileX = localX;
+    let tileY = localY;
+    if (localX >= halfW + gap) {
+        colOffset = plotSize;
+        tileX = localX - halfW - gap;
+    } else if (localX >= halfW) {
+        return null;
+    }
+    if (localY >= halfH + gap) {
+        rowOffset = plotSize;
+        tileY = localY - halfH - gap;
+    } else if (localY >= halfH) {
+        return null;
+    }
+    const col = colOffset + Math.floor(tileX / TILE_SIZE);
+    const row = rowOffset + Math.floor(tileY / TILE_SIZE);
+    if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return null;
+    return { row, col };
+}
+
+function isFarmArea(worldX, worldY) {
+    return !!getFarmCellAtWorld(worldX, worldY);
+}
+
+function getLastSeedTool() {
+    const saved = typeof uiPreferences !== 'undefined' ? uiPreferences.lastSeedTool : null;
+    if (saved && isSeedTool(saved) && isItemUnlocked(saved)) return saved;
+    if (isSeedTool(currentSelectedTool) && isItemUnlocked(currentSelectedTool)) return currentSelectedTool;
+    return 'carrot';
+}
+
+function switchBackToLastSeedTool() {
+    const seedTool = getLastSeedTool();
+    currentSelectedTool = seedTool;
+    if (typeof uiPreferences !== 'undefined') uiPreferences.lastSeedTool = seedTool;
+    effectText = `已切回 ${CROP_CONFIG[seedTool]?.name || '种子'}`;
+    effectAlpha = 1.0;
+}
 
 window.hireWorker = function(type) {
     const cost = type === 'human' ? 600 : 1800;
+    const currentCount = (workers || []).filter(worker => worker.type === type).length;
+    const limit = WORKER_LIMITS[type] ?? Infinity;
+    if (currentCount >= limit) {
+        alert(type === 'drone' ? '无人机目前只能部署 1 台，可以通过升级强化。' : '员工最多雇佣 5 名。');
+        return;
+    }
     if (type === 'drone' && playerLevel < 5 && getTalentLevel('industry') < 4) {
         alert('无人机需要 Lv.5 或工业领袖 L4。');
         return;
@@ -74,6 +201,16 @@ window.dismissWorker = function(type) {
 function handleCanvasMouseDown(e) {
     const screen = getCanvasMouse(e);
     setCanvasUIMouse(screen.x, screen.y);
+
+    if (isSpacebarDown || e.button === 1) {
+        e.preventDefault();
+        isDraggingCamera = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        canvas.style.cursor = 'grabbing';
+        return;
+    }
+
     if (handleCanvasUIClick(screen.x, screen.y)) return;
     const pos = getWorldMouse(e);
 
@@ -82,15 +219,18 @@ function handleCanvasMouseDown(e) {
         return;
     }
 
-    if (isSpacebarDown || e.button === 1) {
-        isDraggingCamera = true;
-        lastMouseX = e.clientX;
-        lastMouseY = e.clientY;
-        canvas.style.cursor = 'grabbing';
+    const visitorId = getVisitorIconAtWorld(pos.worldX, pos.worldY);
+    if (visitorId) {
+        openVisitorJournal(visitorId);
         return;
     }
 
-    if (['chicken', 'sheep', 'cow', 'bee', 'pig'].includes(currentSelectedTool)) {
+    if (isAnimalTool(currentSelectedTool)) {
+        if (currentSelectedTool !== 'bee' && isFarmArea(pos.worldX, pos.worldY)) {
+            switchBackToLastSeedTool();
+            interactWithFarm(pos.worldX, pos.worldY);
+            return;
+        }
         placeAnimal(pos.worldX, pos.worldY);
         return;
     }
@@ -114,10 +254,37 @@ function getCanvasMouse(e) {
     };
 }
 
+function getVisitorIconAtWorld(worldX, worldY) {
+    if (typeof getVisitorIds !== 'function' || typeof isVisitorUnlocked !== 'function') return null;
+    const visitors = getVisitorIds().filter(isVisitorUnlocked);
+    const baseX = ranchStartX + 26;
+    const baseY = ranchStartY + ranchHeight + 54;
+    for (let index = 0; index < visitors.length; index++) {
+        const x = baseX + (index % 4) * 66;
+        const y = baseY + 14 + Math.floor(index / 4) * 48;
+        if (worldX >= x - 14 && worldX <= x + 32 && worldY >= y - 24 && worldY <= y + 34) {
+            return visitors[index];
+        }
+    }
+    return null;
+}
+
+function openVisitorJournal(visitorId) {
+    if (!window.uiState || !VISITOR_CONFIG[visitorId]) return;
+    uiState.activePanel = 'journal';
+    uiState.activeTabs.journal = 'visitors';
+    uiState.activeVisitor = visitorId;
+    uiState.visitorDialog = null;
+    uiState.settingsOpen = false;
+    uiState.scroll.journal = 0;
+    if (typeof markTutorialJournalOpened === 'function') markTutorialJournalOpened();
+    if (typeof window.refreshBitcnDomUi === 'function') window.refreshBitcnDomUi();
+}
+
 function placeAnimal(worldX, worldY) {
     if (!isItemUnlocked(currentSelectedTool)) return;
     const isClickRanch = worldX >= ranchStartX && worldX <= ranchStartX + ranchWidth && worldY >= ranchStartY && worldY <= ranchStartY + ranchHeight;
-    const isClickFarm = worldX >= farmStartX && worldX <= farmStartX + gridWidth && worldY >= farmStartY && worldY <= farmStartY + gridHeight;
+    const isClickFarm = isFarmArea(worldX, worldY);
     const price = CROP_CONFIG[currentSelectedTool].price;
 
     if (currentSelectedTool === 'bee' && !isClickFarm) return alert('🐝 蜜蜂请放置在左侧农田区！');
@@ -139,10 +306,11 @@ function placeAnimal(worldX, worldY) {
 }
 
 function interactWithFarm(worldX, worldY) {
-    if (worldX < farmStartX || worldX > farmStartX + gridWidth || worldY < farmStartY || worldY > farmStartY + gridHeight) return;
+    const target = getFarmCellAtWorld(worldX, worldY);
+    if (!target) return;
     if (!isItemUnlocked(currentSelectedTool)) return;
-    const col = Math.floor((worldX - farmStartX) / TILE_SIZE);
-    const row = Math.floor((worldY - farmStartY) / TILE_SIZE);
+    const col = target.col;
+    const row = target.row;
     const cell = gridData[row][col];
 
     if (cell.state === -1) {
@@ -186,12 +354,19 @@ function handleMouseMove(e) {
         setCanvasUIMouse((e.clientX - rect.left) * (canvas.width / rect.width), (e.clientY - rect.top) * (canvas.height / rect.height));
     }
     if (!isDraggingCamera) return;
+    if (!canPanCamera()) {
+        clampCameraToView();
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        return;
+    }
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     const zoom = camera.zoom || 1;
     camera.x += (e.clientX - lastMouseX) * scaleX / zoom;
     camera.y += (e.clientY - lastMouseY) * scaleY / zoom;
+    clampCameraToView();
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
 }
@@ -204,6 +379,7 @@ function handleCanvasWheel(e) {
         return;
     }
     zoomCamera(e.deltaY < 0 ? 1.08 : 1 / 1.08, screen.x, screen.y);
+    clampCameraToView();
     e.preventDefault();
 }
 
@@ -214,7 +390,21 @@ function handleMouseUp() {
 }
 
 function handleCanvasTouchStart(e) {
-    if (!e.touches || e.touches.length !== 1) return;
+    if (!e.touches || e.touches.length === 0) return;
+    if (e.touches.length >= 2) {
+        clearTimeout(touchInfoTimer);
+        const gesture = getTouchGesture(e.touches);
+        touchState = {
+            mode: 'pinch',
+            lastCenterX: gesture.centerX,
+            lastCenterY: gesture.centerY,
+            lastDistance: gesture.distance,
+            moved: true,
+            infoShown: false
+        };
+        e.preventDefault();
+        return;
+    }
     const touch = e.touches[0];
     const screen = getCanvasPointFromClient(touch.clientX, touch.clientY);
     const world = screenToWorldPoint(screen.x, screen.y);
@@ -239,7 +429,32 @@ function handleCanvasTouchStart(e) {
 }
 
 function handleCanvasTouchMove(e) {
-    if (!touchState || !e.touches || e.touches.length !== 1) return;
+    if (!touchState || !e.touches || e.touches.length === 0) return;
+    if (e.touches.length >= 2 || touchState.mode === 'pinch') {
+        clearTimeout(touchInfoTimer);
+        const gesture = getTouchGesture(e.touches);
+        if (touchState.lastDistance && gesture.distance > 0) {
+            const rect = canvas.getBoundingClientRect();
+            const zoom = camera.zoom || 1;
+            const dx = gesture.centerX - touchState.lastCenterX;
+            const dy = gesture.centerY - touchState.lastCenterY;
+            if (canPanCamera()) {
+                camera.x += dx * (canvas.width / rect.width) / zoom;
+                camera.y += dy * (canvas.height / rect.height) / zoom;
+            }
+            const center = getCanvasPointFromClient(gesture.centerX, gesture.centerY);
+            zoomCamera(gesture.distance / touchState.lastDistance, center.x, center.y);
+            clampCameraToView();
+        }
+        touchState.mode = 'pinch';
+        touchState.moved = true;
+        touchState.lastCenterX = gesture.centerX;
+        touchState.lastCenterY = gesture.centerY;
+        touchState.lastDistance = gesture.distance;
+        e.preventDefault();
+        return;
+    }
+    if (e.touches.length !== 1) return;
     const touch = e.touches[0];
     const dx = touch.clientX - touchState.lastX;
     const dy = touch.clientY - touchState.lastY;
@@ -249,11 +464,14 @@ function handleCanvasTouchMove(e) {
         touchState.moved = true;
         clearTimeout(touchInfoTimer);
     }
-    if (touchState.moved) {
+    if (touchState.moved && canPanCamera()) {
         const rect = canvas.getBoundingClientRect();
         const zoom = camera.zoom || 1;
         camera.x += dx * (canvas.width / rect.width) / zoom;
         camera.y += dy * (canvas.height / rect.height) / zoom;
+        clampCameraToView();
+    } else if (touchState.moved) {
+        clampCameraToView();
     }
     touchState.lastX = touch.clientX;
     touchState.lastY = touch.clientY;
@@ -263,11 +481,39 @@ function handleCanvasTouchMove(e) {
 function handleCanvasTouchEnd(e) {
     clearTimeout(touchInfoTimer);
     if (!touchState) return;
+    if (touchState.mode === 'pinch') {
+        if (e.touches && e.touches.length === 1) {
+            const touch = e.touches[0];
+            const screen = getCanvasPointFromClient(touch.clientX, touch.clientY);
+            touchState = {
+                startX: touch.clientX,
+                startY: touch.clientY,
+                lastX: touch.clientX,
+                lastY: touch.clientY,
+                screen,
+                world: screenToWorldPoint(screen.x, screen.y),
+                moved: true,
+                infoShown: true
+            };
+        } else {
+            touchState = null;
+        }
+        e.preventDefault();
+        return;
+    }
     if (!touchState.moved && !touchState.infoShown) {
         const screen = touchState.screen;
         setCanvasUIMouse(screen.x, screen.y);
         if (!handleCanvasUIClick(screen.x, screen.y)) {
-            if (['chicken', 'sheep', 'cow', 'bee', 'pig'].includes(currentSelectedTool)) {
+            const visitorId = getVisitorIconAtWorld(touchState.world.x, touchState.world.y);
+            if (visitorId) {
+                openVisitorJournal(visitorId);
+            } else if (isAnimalTool(currentSelectedTool)) {
+                if (currentSelectedTool !== 'bee' && isFarmArea(touchState.world.x, touchState.world.y)) {
+                    switchBackToLastSeedTool();
+                    interactWithFarm(touchState.world.x, touchState.world.y);
+                    return;
+                }
                 placeAnimal(touchState.world.x, touchState.world.y);
             } else {
                 interactWithFarm(touchState.world.x, touchState.world.y);
@@ -285,5 +531,17 @@ function getCanvasPointFromClient(clientX, clientY) {
     return {
         x: (clientX - rect.left) * (canvas.width / rect.width),
         y: (clientY - rect.top) * (canvas.height / rect.height)
+    };
+}
+
+function getTouchGesture(touches) {
+    const first = touches[0];
+    const second = touches[1] || touches[0];
+    const centerX = (first.clientX + second.clientX) / 2;
+    const centerY = (first.clientY + second.clientY) / 2;
+    return {
+        centerX,
+        centerY,
+        distance: Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY)
     };
 }
