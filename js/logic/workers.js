@@ -1,14 +1,20 @@
 // ==========================================
 // Logic/Workers: 劳工与无人机自动化
 // ==========================================
+let workerMotionFrame = 0;
+
 function updateWorkers(now) {
+    workerMotionFrame++;
     updateTalentAutomation(now);
     const canAutoSow = isAutoSowEnabled();
     const sowTool = getAutoSowSeedTool();
+    const targetBatchCount = getWorkerTargetBatchCount();
+    const targetBatch = workerMotionFrame % targetBatchCount;
     for (let index = 0; index < workers.length; index++) {
         const worker = workers[index];
         ensureWorkerRuntime(worker, index, now);
-        updateWorkerPatrol(worker, now, canAutoSow && !!sowTool, index);
+        const allowTargetScan = getWorkerTargetBatch(worker, index, targetBatchCount) === targetBatch || !worker.target;
+        updateWorkerPatrol(worker, now, canAutoSow ? sowTool : null, index, allowTargetScan);
         const actionCD = worker.type === 'drone' ? getDroneActionCooldown() : 1000;
         if (now - worker.actionTimer <= actionCD) continue;
         const useTargetCell = worker.target && worker.target.row !== undefined && worker.target.col !== undefined && Math.hypot((worker.target.x || worker.x) - worker.x, (worker.target.y || worker.y) - worker.y) <= 10;
@@ -46,7 +52,8 @@ function ensureWorkerRuntime(worker, index, now) {
         wanderSeed: seed,
         homeX,
         homeY,
-        nextWanderAt: now + 700 + seededUnit(seed, 1) * 1800
+        nextWanderAt: now + 700 + seededUnit(seed, 1) * 1800,
+        nextTargetScanAt: now + (index % 7) * 80
     };
     Object.entries(defaults).forEach(([key, value]) => {
         if (Number.isFinite(worker[key])) return;
@@ -62,6 +69,22 @@ function ensureWorkerRuntime(worker, index, now) {
     if (!Number.isFinite(worker.vy)) worker.vy = 0;
 }
 
+function getWorkerTargetBatchCount() {
+    if (isWorkerPerformanceMode()) return workers.length > 24 ? 5 : 3;
+    if (workers.length > 36) return 4;
+    if (workers.length > 18) return 3;
+    if (workers.length > 8) return 2;
+    return 1;
+}
+
+function getWorkerTargetBatch(worker, index, batchCount) {
+    return Math.abs(Math.floor((worker.wanderSeed || index + 1) + index * 5)) % Math.max(1, batchCount);
+}
+
+function isWorkerPerformanceMode() {
+    return typeof isUnitPerformanceMode === 'function' ? isUnitPerformanceMode() : window.PERFORMANCE_MODE === true;
+}
+
 function seededUnit(seed, salt = 0) {
     const x = Math.sin((seed || 1) * 12.9898 + salt * 78.233) * 43758.5453;
     return x - Math.floor(x);
@@ -72,12 +95,10 @@ function getWorkerTargetHoldMs(worker) {
     return base + seededUnit(worker.wanderSeed, Date.now() % 997) * (worker.type === 'drone' ? 900 : 1800);
 }
 
-function updateWorkerPatrol(worker, now, canAutoSow, index = 0) {
+function updateWorkerPatrol(worker, now, sowTool, index = 0, allowTargetScan = true) {
     ensureWorkerRuntime(worker, index, now);
-    if (!worker.target || now > (worker.targetUntil || 0) || isWorkerTargetDone(worker.target, canAutoSow)) {
-        worker.target = pickWorkerTarget(worker, canAutoSow, index);
-        worker.targetUntil = now + getWorkerTargetHoldMs(worker);
-        worker.idleUntil = 0;
+    if (!worker.target || now > (worker.targetUntil || 0) || isWorkerTargetDone(worker.target, sowTool)) {
+        refreshWorkerTarget(worker, now, sowTool, index, allowTargetScan);
     }
     const farmW = typeof getFarmVisualWidth === 'function' ? getFarmVisualWidth() : gridWidth;
     const farmH = typeof getFarmVisualHeight === 'function' ? getFarmVisualHeight() : gridHeight;
@@ -94,8 +115,7 @@ function updateWorkerPatrol(worker, now, canAutoSow, index = 0) {
         if (worker.target?.kind === 'patrol') {
             if (!worker.idleUntil) worker.idleUntil = now + 520 + seededUnit(worker.wanderSeed, now % 613) * (worker.type === 'drone' ? 900 : 1500);
             if (now >= worker.idleUntil || now >= (worker.nextWanderAt || 0)) {
-                worker.target = pickWorkerTarget(worker, canAutoSow, index);
-                worker.targetUntil = now + getWorkerTargetHoldMs(worker);
+                refreshWorkerTarget(worker, now, sowTool, index, allowTargetScan);
                 worker.nextWanderAt = now + 1200 + seededUnit(worker.wanderSeed, now % 977) * (worker.type === 'drone' ? 2200 : 3600);
                 worker.idleUntil = 0;
             }
@@ -111,7 +131,7 @@ function updateWorkerPatrol(worker, now, canAutoSow, index = 0) {
         worker.vx += (seededUnit(worker.wanderSeed, Math.floor(now / 900)) - 0.5) * (worker.type === 'drone' ? 0.045 : 0.025);
         worker.vy += (seededUnit(worker.wanderSeed, Math.floor(now / 1100) + 13) - 0.5) * (worker.type === 'drone' ? 0.04 : 0.018);
     }
-    applyWorkerSeparation(worker, workers, index);
+    if (shouldSeparateWorker(worker, index)) applyWorkerSeparation(worker, workers, index);
     const velocity = Math.hypot(worker.vx, worker.vy);
     const maxSpeed = worker.type === 'drone' ? speed : speed * 0.95;
     if (velocity > maxSpeed) {
@@ -124,13 +144,27 @@ function updateWorkerPatrol(worker, now, canAutoSow, index = 0) {
     worker.y = Math.max(farmStartY + 8, Math.min(farmStartY + farmH - 8, worker.y));
 }
 
-function isWorkerTargetDone(target, canAutoSow) {
+function refreshWorkerTarget(worker, now, sowTool, index, allowTargetScan) {
+    const scanDue = allowTargetScan && now >= (worker.nextTargetScanAt || 0);
+    worker.target = scanDue ? pickWorkerTarget(worker, sowTool, index) : pickWorkerWanderTarget(worker, index);
+    worker.targetUntil = now + getWorkerTargetHoldMs(worker);
+    worker.nextTargetScanAt = now + 180 + seededUnit(worker.wanderSeed, Math.floor(now / 83)) * (isWorkerPerformanceMode() ? 640 : 320);
+    worker.idleUntil = 0;
+}
+
+function shouldSeparateWorker(worker, index) {
+    if (workers.length <= 1) return false;
+    const divisor = isWorkerPerformanceMode() ? 3 : workers.length > 18 ? 2 : 1;
+    return divisor === 1 || ((workerMotionFrame + index + (worker.type === 'drone' ? 1 : 0)) % divisor === 0);
+}
+
+function isWorkerTargetDone(target, sowTool) {
     if (target?.kind === 'patrol') return false;
     if (!target || target.row === undefined || target.col === undefined) return true;
     const cell = gridData[target.row]?.[target.col];
     if (!cell) return true;
     if (target.kind === 'harvest') return cell.state !== 2;
-    if (target.kind === 'sow') return !canAutoSow || cell.state !== 0;
+    if (target.kind === 'sow') return !sowTool || !canAutoSowCell(cell, sowTool);
     return false;
 }
 
@@ -140,34 +174,30 @@ function getReservedWorkerCells(worker) {
         if (!other || other === worker || !other.target) continue;
         if (!['harvest', 'sow'].includes(other.target.kind)) continue;
         if (other.target.row === undefined || other.target.col === undefined) continue;
-        if (isWorkerTargetDone(other.target, true)) continue;
+        if (isWorkerTargetDone(other.target, getAutoSowSeedTool())) continue;
         reserved.add(`${other.target.row}:${other.target.col}`);
     }
     return reserved;
 }
 
-function pickWorkerTarget(worker, canAutoSow, index = 0) {
+function pickWorkerTarget(worker, sowTool, index = 0) {
     ensureWorkerRuntime(worker, index, Date.now());
+    const canAutoSow = !!sowTool;
     const preferredStates = [2, ...(canAutoSow ? [0] : [])];
     const reserved = getReservedWorkerCells(worker);
     for (const state of preferredStates) {
         const cells = [];
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
-                if (gridData[r][c].state !== state) continue;
+                const cell = gridData[r][c];
+                if (cell.state !== state) continue;
+                if (state === 0 && !canAutoSowCell(cell, sowTool)) continue;
                 if (reserved.has(`${r}:${c}`)) continue;
                 cells.push({ row: r, col: c });
             }
         }
         if (cells.length > 0) {
-            cells.sort((a, b) => {
-                const ax = (typeof getFarmTileWorldX === 'function' ? getFarmTileWorldX(a.col) : farmStartX + a.col * TILE_SIZE) + TILE_SIZE / 2;
-                const ay = (typeof getFarmTileWorldY === 'function' ? getFarmTileWorldY(a.row) : farmStartY + a.row * TILE_SIZE) + TILE_SIZE / 2;
-                const bx = (typeof getFarmTileWorldX === 'function' ? getFarmTileWorldX(b.col) : farmStartX + b.col * TILE_SIZE) + TILE_SIZE / 2;
-                const by = (typeof getFarmTileWorldY === 'function' ? getFarmTileWorldY(b.row) : farmStartY + b.row * TILE_SIZE) + TILE_SIZE / 2;
-                return Math.hypot(ax - worker.x, ay - worker.y) - Math.hypot(bx - worker.x, by - worker.y);
-            });
-            const choice = cells[Math.min(cells.length - 1, Math.floor(Math.random() * Math.min(4, cells.length)))];
+            const choice = pickNearbyWorkerCell(cells, worker);
             return {
                 kind: state === 2 ? 'harvest' : 'sow',
                 row: choice.row,
@@ -178,6 +208,24 @@ function pickWorkerTarget(worker, canAutoSow, index = 0) {
         }
     }
     return pickWorkerWanderTarget(worker, index);
+}
+
+function pickNearbyWorkerCell(cells, worker) {
+    const candidates = [];
+    for (const cell of cells) {
+        const x = (typeof getFarmTileWorldX === 'function' ? getFarmTileWorldX(cell.col) : farmStartX + cell.col * TILE_SIZE) + TILE_SIZE / 2;
+        const y = (typeof getFarmTileWorldY === 'function' ? getFarmTileWorldY(cell.row) : farmStartY + cell.row * TILE_SIZE) + TILE_SIZE / 2;
+        const score = Math.abs(x - worker.x) + Math.abs(y - worker.y);
+        const entry = { cell, score };
+        const insertAt = candidates.findIndex(candidate => score < candidate.score);
+        if (insertAt < 0) {
+            if (candidates.length < 4) candidates.push(entry);
+        } else {
+            candidates.splice(insertAt, 0, entry);
+            if (candidates.length > 4) candidates.pop();
+        }
+    }
+    return candidates[Math.floor(Math.random() * Math.max(1, candidates.length))]?.cell || cells[0];
 }
 
 function pickWorkerWanderTarget(worker, index = 0) {
@@ -206,7 +254,10 @@ function applyWorkerSeparation(worker, workerList, index) {
     if (!Array.isArray(workerList)) return;
     let pushX = 0;
     let pushY = 0;
-    for (let i = 0; i < workerList.length; i++) {
+    const radius = isWorkerPerformanceMode() ? 3 : 6;
+    const start = Math.max(0, index - radius);
+    const end = Math.min(workerList.length - 1, index + radius);
+    for (let i = start; i <= end; i++) {
         if (i === index) continue;
         const other = workerList[i];
         if (!other) continue;
@@ -271,7 +322,7 @@ function autoSowCurrentSeed(now, limit) {
     const cells = [];
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
-            if (gridData[r][c].state === 0) cells.push({ r, c, dist: Math.abs(r - center) + Math.abs(c - center) });
+            if (canAutoSowCell(gridData[r][c], sowTool)) cells.push({ r, c, dist: Math.abs(r - center) + Math.abs(c - center) });
         }
     }
     cells.sort((a, b) => a.dist - b.dist);
@@ -280,6 +331,12 @@ function autoSowCurrentSeed(now, limit) {
         if (plantCell(gridData[pos.r][pos.c], sowTool, now)) planted++;
     }
     return planted;
+}
+
+function canAutoSowCell(cell, sowTool) {
+    if (!cell || !sowTool) return false;
+    if (typeof canPlantCropAtCell === 'function') return canPlantCropAtCell(cell, sowTool, { quiet: true });
+    return cell.state === 0;
 }
 
 function collectReadyAnimalProducts(now) {

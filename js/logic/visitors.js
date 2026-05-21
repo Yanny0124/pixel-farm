@@ -176,6 +176,27 @@ function getVisitorTalkLine(id) {
     return config.daily[Math.floor(Math.random() * config.daily.length)];
 }
 
+let lastVisitorTalkInteraction = { id: '', at: 0 };
+const VISITOR_TALK_DEDUPE_MS = 320;
+
+function beginVisitorTalkInteraction(id) {
+    const now = Date.now();
+    if (lastVisitorTalkInteraction.id === id && now - lastVisitorTalkInteraction.at < VISITOR_TALK_DEDUPE_MS) {
+        return false;
+    }
+    lastVisitorTalkInteraction = { id, at: now };
+    return true;
+}
+
+window.openVisitorDialog = function(id) {
+    if (!window.uiState || !isVisitorUnlocked(id) || !beginVisitorTalkInteraction(id)) return false;
+    const line = getVisitorTalkLine(id);
+    stats.visitorTalks = (stats.visitorTalks || 0) + 1;
+    window.uiState.visitorDialog = { id, line };
+    saveGame();
+    return true;
+};
+
 window.deliverVisitorTask = function(id) {
     if (!canDeliverVisitorTask(id)) return;
     const config = VISITOR_CONFIG[id];
@@ -218,7 +239,7 @@ function applyVisitorReward(reward) {
 }
 
 window.talkVisitor = function(id) {
-    if (!isVisitorUnlocked(id)) return;
+    if (!isVisitorUnlocked(id) || !beginVisitorTalkInteraction(id)) return;
     const config = VISITOR_CONFIG[id];
     const progress = getVisitorProgress(id);
     effectText = `${config.icon} ${config.name}：${getVisitorTalkLine(id)}`;

@@ -339,6 +339,7 @@
     }
 
     function getUnitPrice(id) {
+        if (typeof getMarketSellUnitPrice === 'function') return getMarketSellUnitPrice(id);
         const cropConfig = typeof CROP_CONFIG !== 'undefined' ? CROP_CONFIG : {};
         const markets = typeof marketState !== 'undefined' ? marketState : {};
         const config = cropConfig[id];
@@ -521,7 +522,7 @@
         const title = document.createElement('strong');
         title.textContent = '市场';
         const hint = document.createElement('span');
-        hint.textContent = '输入数量后出售';
+        hint.textContent = '出售库存，也可高价补货';
         const close = createBitcnButton('×', 'bitcn-close-button', () => {
             if (typeof window.togglePanel === 'function') window.togglePanel('market');
             render();
@@ -548,7 +549,11 @@
             const titleLine = document.createElement('strong');
             titleLine.textContent = `${config.icon || ''} ${config.name} 价格走势`;
             const priceLine = document.createElement('span');
-            priceLine.textContent = `当前 ${typeof formatCoins === 'function' ? formatCoins(currentPrice) : currentPrice + '币'} / 库存 ${inventory?.[activeMarketItem] || 0}`;
+            const buyPrice = typeof getMarketBuyUnitPrice === 'function' ? getMarketBuyUnitPrice(activeMarketItem) : 0;
+            const buyText = buyPrice > 0
+                ? ` / 买入 ${typeof formatCoins === 'function' ? formatCoins(buyPrice) : buyPrice + '币'}`
+                : '';
+            priceLine.textContent = `卖出 ${typeof formatCoins === 'function' ? formatCoins(currentPrice) : currentPrice + '币'}${buyText} / 库存 ${inventory?.[activeMarketItem] || 0}`;
             const rangeLine = document.createElement('span');
             rangeLine.textContent = `区间 ${minPrice}-${maxPrice} / 基准 ${config.basePrice || 0} / 趋势 ${trend}`;
             detailInfo.append(titleLine, priceLine, rangeLine);
@@ -579,10 +584,13 @@
             const config = CROP_CONFIG?.[id];
             if (!config) return;
             const stock = inventory?.[id] || 0;
+            const buyable = typeof isMarketItemBuyable === 'function' && isMarketItemBuyable(id);
+            const buyPrice = buyable && typeof getMarketBuyUnitPrice === 'function' ? getMarketBuyUnitPrice(id) : 0;
+            const buyMaxAmount = buyable && typeof getMarketBuyMaxAffordable === 'function' ? getMarketBuyMaxAffordable(id) : 0;
             const trendValue = marketState?.[id]?.trend || 0;
             const trend = trendValue > 0.2 ? '涨' : trendValue < -0.2 ? '跌' : '稳';
             const card = document.createElement('article');
-            card.className = `bitcn-market-card ${stock > 0 ? '' : 'is-disabled'} ${activeMarketItem === id ? 'is-active' : ''}`;
+            card.className = `bitcn-market-card ${stock > 0 || buyable ? '' : 'is-disabled'} ${activeMarketItem === id ? 'is-active' : ''}`;
             card.addEventListener('click', () => {
                 activeMarketItem = id;
                 renderMarketPanel(true);
@@ -593,7 +601,10 @@
             name.textContent = `${config.icon || ''} ${config.name}`;
             const sub = document.createElement('span');
             const unitPriceText = typeof formatCoins === 'function' ? formatCoins(getUnitPrice(id)) : `${getUnitPrice(id)}币`;
-            sub.textContent = `库存 ${stock} / 单价 ${unitPriceText} / ${trend}`;
+            const buyPriceText = buyPrice > 0
+                ? ` / 买 ${typeof formatCoins === 'function' ? formatCoins(buyPrice) : `${buyPrice}币`}`
+                : ' / 暂不买入';
+            sub.textContent = `库存 ${stock} / 卖 ${unitPriceText}${buyPriceText} / ${trend}`;
             meta.append(name, sub);
             const controls = document.createElement('div');
             controls.className = 'bitcn-market-controls';
@@ -614,7 +625,19 @@
                 if (typeof sellItemAmount === 'function') sellItemAmount(id, marketAmounts[id]);
                 renderMarketPanel(true);
             }, stock <= 0);
-            controls.append(minus, input, plus, max, sell);
+            const buyOne = createBitcnButton('买1', 'bitcn-action-button', () => {
+                if (typeof buyItemAmount === 'function') buyItemAmount(id, 1);
+                renderMarketPanel(true);
+            }, !buyable || buyMaxAmount < 1);
+            const buyTen = createBitcnButton('买10', 'bitcn-action-button', () => {
+                if (typeof buyItemAmount === 'function') buyItemAmount(id, 10);
+                renderMarketPanel(true);
+            }, !buyable || buyMaxAmount < 10);
+            const buyMax = createBitcnButton('买最大', 'bitcn-action-button bitcn-wide-button', () => {
+                if (typeof buyItemAmount === 'function') buyItemAmount(id, 'max');
+                renderMarketPanel(true);
+            }, !buyable || buyMaxAmount < 1);
+            controls.append(minus, input, plus, max, sell, buyOne, buyTen, buyMax);
             card.append(meta, controls);
             list.appendChild(card);
         });
@@ -748,9 +771,10 @@
         } else if (panelId === 'orders') {
             parts.push(`tasks:${tasks.map(task => task ? `${task.item}:${task.amount}:${task.reward}:${task.exp}:${Array.isArray(task.items) ? task.items.map(entry => `${entry.item}:${entry.amount}`).join('+') : ''}` : 'empty').join(',')}`, `refresh:${typeof getOrderRefreshLeftMs === 'function' ? Math.ceil(getOrderRefreshLeftMs() / 1000) : 0}`, getVisitorUiKey());
         } else if (panelId === 'automation') {
+            const preferences = getDomUiPreferences();
             parts.push(
                 `coins:${coins}`,
-                `autoSow:${window.uiPreferences?.autoSowEnabled === false ? 0 : 1}`,
+                `autoSow:${preferences?.autoSowEnabled === false ? 0 : 1}`,
                 `tool:${currentSelectedTool}`,
                 `workers:${(workers || []).map(worker => worker.type).join(',')}`,
                 `drone:${Object.entries(droneUpgrades || {}).map(([id, level]) => `${id}:${level}`).join(',')}`
@@ -758,6 +782,10 @@
         }
 
         return parts.join('|');
+    }
+
+    function getDomUiPreferences() {
+        return typeof uiPreferences !== 'undefined' ? uiPreferences : window.uiPreferences;
     }
 
     function renderAppPanel(force = false) {
@@ -1019,17 +1047,19 @@
             const config = CROP_CONFIG?.[id];
             if (!config) return;
             const unlocked = typeof isItemUnlocked === 'function' ? isItemUnlocked(id) : true;
+            const selected = currentSelectedTool === id;
             const card = document.createElement('button');
             card.type = 'button';
-            card.className = `bitcn-item-card bitcn-select-card ${unlocked ? '' : 'is-locked'}`;
+            card.className = `bitcn-item-card bitcn-select-card ${unlocked ? '' : 'is-locked'} ${selected ? 'is-active' : ''}`;
             card.disabled = !unlocked;
+            card.setAttribute('aria-pressed', selected ? 'true' : 'false');
             const icon = document.createElement('b');
             icon.textContent = unlocked ? (config.icon || '◆') : '？';
             const name = document.createElement('strong');
             name.textContent = unlocked ? config.name : `${type === 'crop' ? '作物' : '动物'}剪影`;
             const detail = document.createElement('span');
             detail.textContent = unlocked
-                ? (type === 'crop' ? `${config.seedPrice}币 / ${config.category}` : `${config.price}币 / Lv.${config.reqLevel || 1}`)
+                ? `${selected ? '当前选中 / ' : ''}${type === 'crop' ? `${config.seedPrice}币 / ${config.category}` : `${config.price}币 / Lv.${config.reqLevel || 1}`}`
                 : (config.unlockHint || `Lv.${config.reqLevel || 1} 解锁`);
             card.append(icon, name, detail);
             card.addEventListener('click', () => {
@@ -1127,7 +1157,7 @@
 
     function getVisibleMiracleDomIds() {
         const ids = typeof getMiracleIds === 'function' ? getMiracleIds() : [];
-        return ids.filter(id => id !== 'irrigation');
+        return ids;
     }
 
     function createBuildCard(titleText, bodyText, metaText, actions = []) {
@@ -1207,8 +1237,9 @@
     }
 
     function renderAutomationDom(content) {
-        const autoEnabled = window.uiPreferences?.autoSowEnabled !== false;
-        const seedTool = typeof getAutoSowSeedTool === 'function' ? getAutoSowSeedTool() : (window.uiPreferences?.lastSeedTool || currentSelectedTool);
+        const preferences = getDomUiPreferences();
+        const autoEnabled = preferences?.autoSowEnabled !== false;
+        const seedTool = typeof getAutoSowSeedTool === 'function' ? getAutoSowSeedTool() : (preferences?.lastSeedTool || currentSelectedTool);
         const seedConfig = CROP_CONFIG?.[seedTool];
         content.appendChild(sectionTitle('自动播种'));
         const autoList = document.createElement('div');
@@ -1217,7 +1248,7 @@
             autoEnabled ? '自动播种：开启' : '自动播种：关闭',
             autoEnabled ? `员工会在空田补种 ${seedConfig ? `${seedConfig.icon || ''} ${seedConfig.name}` : '上一种种子'}。` : '关闭后员工只收成熟作物，不会补种。',
             '动物工具点田会自动切回上一个种子工具。',
-            [[autoEnabled ? '关闭' : '开启', () => { if (typeof toggleAutoSow === 'function') toggleAutoSow(!autoEnabled); else if (window.uiPreferences) window.uiPreferences.autoSowEnabled = !autoEnabled; renderAppPanel(true); renderSideDock(); saveGame?.(); }, true]]
+            [[autoEnabled ? '关闭' : '开启', () => { if (typeof toggleAutoSow === 'function') toggleAutoSow(!autoEnabled); else if (preferences) preferences.autoSowEnabled = !autoEnabled; renderAppPanel(true); renderSideDock(); saveGame?.(); }, true]]
         ));
         content.appendChild(autoList);
         const humanCount = (workers || []).filter(worker => worker.type === 'human').length;
@@ -1338,7 +1369,7 @@
             const actions = document.createElement('div');
             actions.className = 'bitcn-button-row';
             actions.append(
-                createBitcnButton('对话', 'bitcn-mini-button', () => { const line = typeof getVisitorTalkLine === 'function' ? getVisitorTalkLine(activeId) : ''; stats.visitorTalks = (stats.visitorTalks || 0) + 1; window.uiState.visitorDialog = { id: activeId, line }; saveGame?.(); renderAppPanel(true); }, false),
+                createBitcnButton('对话', 'bitcn-mini-button', () => { if (typeof openVisitorDialog === 'function' && openVisitorDialog(activeId)) renderAppPanel(true); }, false),
                 createBitcnButton(progress.finished ? '已入驻' : '交付', 'bitcn-mini-button', () => { if (!canDeliverVisitorTask(activeId)) return; deliverVisitorTask(activeId); renderAppPanel(true); }, !canDeliverVisitorTask(activeId))
             );
             detail.append(title, status, need, actions);

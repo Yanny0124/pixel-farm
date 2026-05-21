@@ -50,7 +50,7 @@
         const title = document.createElement('strong');
         title.textContent = '市场';
         const hint = document.createElement('span');
-        hint.textContent = '输入数量后出售';
+        hint.textContent = '出售库存，也可高价补货';
         const close = createBitcnButton('×', 'bitcn-close-button', () => {
             if (typeof window.togglePanel === 'function') window.togglePanel('market');
             if (typeof render === 'function') render();
@@ -78,7 +78,11 @@
             const titleLine = document.createElement('strong');
             titleLine.textContent = `${config.icon || ''} ${config.name} 价格走势`;
             const priceLine = document.createElement('span');
-            priceLine.textContent = `当前 ${typeof formatCoins === 'function' ? formatCoins(currentPrice) : currentPrice + '币'} / 库存 ${inventory?.[activeMarketItem] || 0}`;
+            const buyPrice = typeof getMarketBuyUnitPrice === 'function' ? getMarketBuyUnitPrice(activeMarketItem) : 0;
+            const buyText = buyPrice > 0
+                ? ` / 买入 ${typeof formatCoins === 'function' ? formatCoins(buyPrice) : buyPrice + '币'}`
+                : '';
+            priceLine.textContent = `卖出 ${typeof formatCoins === 'function' ? formatCoins(currentPrice) : currentPrice + '币'}${buyText} / 库存 ${inventory?.[activeMarketItem] || 0}`;
             const rangeLine = document.createElement('span');
             rangeLine.textContent = `区间 ${minPrice}-${maxPrice} / 基准 ${config.basePrice || 0} / 趋势 ${trend}`;
             detailInfo.append(titleLine, priceLine, rangeLine);
@@ -109,10 +113,13 @@
             const config = CROP_CONFIG?.[id];
             if (!config) return;
             const stock = inventory?.[id] || 0;
+            const buyable = typeof isMarketItemBuyable === 'function' && isMarketItemBuyable(id);
+            const buyPrice = buyable && typeof getMarketBuyUnitPrice === 'function' ? getMarketBuyUnitPrice(id) : 0;
+            const buyMaxAmount = buyable && typeof getMarketBuyMaxAffordable === 'function' ? getMarketBuyMaxAffordable(id) : 0;
             const trendValue = marketState?.[id]?.trend || 0;
             const trend = trendValue > 0.2 ? '涨' : trendValue < -0.2 ? '跌' : '稳';
             const card = document.createElement('article');
-            card.className = `bitcn-market-card ${stock > 0 ? '' : 'is-disabled'} ${activeMarketItem === id ? 'is-active' : ''}`;
+            card.className = `bitcn-market-card ${stock > 0 || buyable ? '' : 'is-disabled'} ${activeMarketItem === id ? 'is-active' : ''}`;
             card.addEventListener('click', () => {
                 if (typeof setActiveMarketItem === 'function') setActiveMarketItem(id);
                 if (typeof renderMarketPanel === 'function') renderMarketPanel(true);
@@ -124,7 +131,10 @@
             const sub = document.createElement('span');
             const unitPrice = typeof getUnitPrice === 'function' ? getUnitPrice(id) : 0;
             const unitPriceText = typeof formatCoins === 'function' ? formatCoins(unitPrice) : `${unitPrice}币`;
-            sub.textContent = `库存 ${stock} / 单价 ${unitPriceText} / ${trend}`;
+            const buyPriceText = buyPrice > 0
+                ? ` / 买 ${typeof formatCoins === 'function' ? formatCoins(buyPrice) : `${buyPrice}币`}`
+                : ' / 暂不买入';
+            sub.textContent = `库存 ${stock} / 卖 ${unitPriceText}${buyPriceText} / ${trend}`;
             meta.append(name, sub);
             const controls = document.createElement('div');
             controls.className = 'bitcn-market-controls';
@@ -145,7 +155,19 @@
                 if (typeof sellItemAmount === 'function') sellItemAmount(id, marketAmounts[id]);
                 renderMarketPanel(true);
             }, stock <= 0);
-            controls.append(minus, input, plus, max, sell);
+            const buyOne = createBitcnButton('买1', 'bitcn-action-button', () => {
+                if (typeof buyItemAmount === 'function') buyItemAmount(id, 1);
+                renderMarketPanel(true);
+            }, !buyable || buyMaxAmount < 1);
+            const buyTen = createBitcnButton('买10', 'bitcn-action-button', () => {
+                if (typeof buyItemAmount === 'function') buyItemAmount(id, 10);
+                renderMarketPanel(true);
+            }, !buyable || buyMaxAmount < 10);
+            const buyMax = createBitcnButton('买最大', 'bitcn-action-button bitcn-wide-button', () => {
+                if (typeof buyItemAmount === 'function') buyItemAmount(id, 'max');
+                renderMarketPanel(true);
+            }, !buyable || buyMaxAmount < 1);
+            controls.append(minus, input, plus, max, sell, buyOne, buyTen, buyMax);
             card.append(meta, controls);
             list.appendChild(card);
         });

@@ -26,7 +26,7 @@
             ['clock', typeof getClockLabel === 'function' ? getClockLabel() : '--:--'],
             ['seed', `${WEATHER_CONFIG?.[weather?.type]?.icon || ''} ${WEATHER_CONFIG?.[weather?.type]?.name || ''}`],
             ['seed', `生长 ${Math.round((typeof getGrowthMultiplier === 'function' ? getGrowthMultiplier() : 1) * 100)}%`],
-            ['hammer', `工具 ${typeof getToolLabel === 'function' ? getToolLabel(currentSelectedTool) : currentSelectedTool}`],
+            ['hammer', getSelectedToolStatusLabel()],
             ['market', `视野 ${Math.round(((typeof camera !== 'undefined' && camera.zoom) || 1) * 100)}%`]
         ];
         stats[0][1] = `金币 ${typeof formatCoins === 'function' ? formatCoins(coins) : coins}`;
@@ -55,6 +55,14 @@
             if (typeof render === 'function') render(true);
         });
         statusBar.append(settings, support);
+    }
+
+    function getSelectedToolStatusLabel() {
+        const label = typeof getToolLabel === 'function' ? getToolLabel(currentSelectedTool) : currentSelectedTool;
+        const config = CROP_CONFIG?.[currentSelectedTool];
+        if (config?.seedPrice !== undefined) return `种子 ${label}`;
+        if (config?.price !== undefined) return `动物 ${label}`;
+        return `工具 ${label}`;
     }
 
     window.BitcnPanels = window.BitcnPanels || {};

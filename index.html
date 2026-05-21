@@ -8,6 +8,22 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="loading-screen" class="loading-screen" role="status" aria-live="polite" aria-label="游戏加载中">
+        <div class="loading-card">
+            <div class="loading-pixels" aria-hidden="true">
+                <i></i>
+                <i></i>
+                <i></i>
+            </div>
+            <strong>Tiny Pixel Farm</strong>
+            <span id="loading-message">正在整理农场……</span>
+            <div class="loading-progress" aria-hidden="true">
+                <i id="loading-progress-fill"></i>
+            </div>
+            <small id="loading-count">正在加载素材 0 / 0</small>
+            <em id="loading-stage">加载背景</em>
+        </div>
+    </div>
     <div class="main-layout">
         <div id="game-container">
             <canvas id="gameCanvas" width="1600" height="900"></canvas>
@@ -27,6 +43,7 @@
     <script src="js/logic/skills.js"></script>
     <script src="js/render/sprite-data.js"></script>
     <script src="js/render/effects.js"></script>
+    <script src="js/render/performance.js"></script>
     <script src="js/ui/dom-ui.js"></script>
     <script src="js/ui/pixel-assets.js"></script>
     <script src="js/ui/pxlkit-icons.js"></script>
@@ -46,6 +63,8 @@
     <script src="js/ui/bitcn-dom-ui.js"></script>
     <script src="js/render/layout-debug.js"></script>
     <script src="js/render/renderer.js"></script>
+    <script src="js/loading.js"></script>
+    <script src="js/render/asset-loader.js"></script>
     <script src="js/input.js"></script>
     <script src="js/main.js"></script>
 </body>

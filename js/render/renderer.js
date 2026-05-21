@@ -58,6 +58,7 @@ function renderFrame() {
     drawOfflineReturnFx(ctx);
     drawCanvasUI(ctx);
     drawGlobalEffectText();
+    window.PerfDebug?.drawOverlay(ctx);
     ctx.restore();
 }
 
@@ -317,6 +318,33 @@ function getWorldLayoutVisual(path, fallback) {
     };
 }
 
+function getVisibleWorldRect(padding = 0) {
+    const zoom = camera.zoom || 1;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const left = (-centerX / zoom) + centerX - (camera.x || 0) - padding;
+    const top = (-centerY / zoom) + centerY - (camera.y || 0) - padding;
+    return {
+        x: left,
+        y: top,
+        w: canvas.width / zoom + padding * 2,
+        h: canvas.height / zoom + padding * 2
+    };
+}
+
+function isWorldRectVisible(x, y, w = 0, h = 0, view = getVisibleWorldRect()) {
+    return x + w >= view.x && x <= view.x + view.w && y + h >= view.y && y <= view.y + view.h;
+}
+
+function isWorldPointVisible(x, y, padding = 0, view = getVisibleWorldRect(padding)) {
+    return x >= view.x && x <= view.x + view.w && y >= view.y && y <= view.y + view.h;
+}
+
+function getRenderGridCell(row, col) {
+    const cell = gridData[row]?.[col];
+    return window.PerfDebug?.getBenchmarkCell(row, col, cell) || cell;
+}
+
 function normalizeWorldLayoutVisual(visual, fallback = {}) {
     const source = visual || {};
     const w = getFiniteNumber(source.w ?? source.width, getFiniteNumber(fallback.w ?? fallback.width, 0));
@@ -557,13 +585,24 @@ function drawCropArea() {
     const farmLayout = getFarmAreaLayout();
     registerWorldLayoutDebugItem('farmland', farmLayout);
     drawCropBaseLayer();
+    const view = getVisibleWorldRect(TILE_SIZE * 2);
+    let cropsSeen = 0;
+    let cropsDrawn = 0;
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
-            drawCropTileOverlay(r, c);
+            const cell = getRenderGridCell(r, c);
+            if (cell && cell.state > 0) cropsSeen++;
+            const x = getFarmTileWorldX(c);
+            const y = getFarmTileWorldY(r);
+            if (!isWorldRectVisible(x, y, TILE_SIZE, TILE_SIZE, view)) continue;
+            if (drawCropTileOverlay(r, c, cell, x, y)) cropsDrawn++;
         }
     }
-    drawLargeMatureCrops();
-    drawMatureResonanceLinks();
+    window.PerfDebug?.setCount('cropsSeen', cropsSeen);
+    window.PerfDebug?.setCount('cropsDrawn', cropsDrawn);
+    drawTutorialFirstSowHint();
+    drawLargeMatureCrops(view);
+    drawMatureResonanceLinks(view);
 }
 
 function drawCropAreaStable() {
@@ -576,6 +615,26 @@ function drawCropAreaStable() {
     }
     drawLargeMatureCrops();
     drawMatureResonanceLinks();
+}
+
+function drawTutorialFirstSowHint() {
+    if (typeof stats === 'undefined' || Object.values(stats.harvests || {}).some(value => value > 0)) return;
+    if (typeof hasAnyPlantedOrMatureCrop === 'function' && hasAnyPlantedOrMatureCrop()) return;
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            if (getRenderGridCell(r, c)?.state !== 0) continue;
+            const x = getFarmTileWorldX(c);
+            const y = getFarmTileWorldY(r);
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 226, 117, 0.18)';
+            ctx.fillRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+            ctx.strokeStyle = 'rgba(255, 248, 223, 0.92)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+            ctx.restore();
+            return;
+        }
+    }
 }
 
 function getFarmPlotGap() {
@@ -713,18 +772,19 @@ function drawFarmPlotDividers() {
     ctx.restore();
 }
 
-function drawCropTileOverlay(r, c) {
-    const x = getFarmTileWorldX(c);
-    const y = getFarmTileWorldY(r);
-    const cell = gridData[r][c];
-    if (cell.state === -1) return;
+function drawCropTileOverlay(r, c, cell = getRenderGridCell(r, c), x = getFarmTileWorldX(c), y = getFarmTileWorldY(r)) {
+    if (!cell || cell.state === -1) return false;
 
     if (cell.state === 4) {
         ctx.fillStyle = 'rgba(230, 126, 34, 0.10)';
         ctx.fillRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-        return;
+        return true;
     }
-    if (cell.state !== 0) drawCropInTile(cell, x, y);
+    if (cell.state !== 0) {
+        drawCropInTile(cell, x, y);
+        return true;
+    }
+    return false;
 }
 
 function drawCropInTile(cell, x, y) {
@@ -754,14 +814,15 @@ function drawCropInTile(cell, x, y) {
     }
 }
 
-function drawLargeMatureCrops() {
+function drawLargeMatureCrops(view = getVisibleWorldRect(TILE_SIZE * 3)) {
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
-            const cell = gridData[r][c];
-            if (cell.state !== 2 || cell.cropType !== 'pumpkin') continue;
+            const cell = getRenderGridCell(r, c);
+            if (!cell || cell.state !== 2 || cell.cropType !== 'pumpkin') continue;
             if (!isRenderLargeCropWithinFarmPlot(r, c)) continue;
             const x = getFarmTileWorldX(c);
             const y = getFarmTileWorldY(r);
+            if (!isWorldRectVisible(x, y, TILE_SIZE * 2, TILE_SIZE * 2, view)) continue;
             const stageCount = CROP_CONFIG.pumpkin.stages || 5;
             const matureInset = getMatureBorderInset();
             drawCropSprite(ctx, 'pumpkin', stageCount - 1, x, y, TILE_SIZE * 2);
@@ -777,7 +838,7 @@ function drawLargeMatureCrops() {
     }
 }
 
-function drawMatureResonanceLinks() {
+function drawMatureResonanceLinks(view = getVisibleWorldRect(TILE_SIZE * 2)) {
     const maxLinks = 80;
     let linksDrawn = 0;
     ctx.save();
@@ -786,19 +847,19 @@ function drawMatureResonanceLinks() {
     ctx.beginPath();
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
-            const cell = gridData[r][c];
-            if (cell.state !== 2 || !cell.cropType) continue;
-            const right = gridData[r]?.[c + 1];
-            const down = gridData[r + 1]?.[c];
+            const cell = getRenderGridCell(r, c);
+            if (!cell || cell.state !== 2 || !cell.cropType) continue;
+            const right = getRenderGridCell(r, c + 1);
+            const down = getRenderGridCell(r + 1, c);
             const cx = getFarmTileWorldX(c) + TILE_SIZE / 2;
             const cy = getFarmTileWorldY(r) + TILE_SIZE / 2;
-            if (right && right.state === 2 && right.cropType === cell.cropType) {
+            if (right && right.state === 2 && right.cropType === cell.cropType && isWorldRectVisible(cx, cy - 2, TILE_SIZE, 4, view)) {
                 ctx.moveTo(cx, cy);
                 ctx.lineTo(getFarmTileWorldX(c + 1) + TILE_SIZE / 2, cy);
                 linksDrawn++;
                 if (linksDrawn >= maxLinks) break;
             }
-            if (down && down.state === 2 && down.cropType === cell.cropType) {
+            if (down && down.state === 2 && down.cropType === cell.cropType && isWorldRectVisible(cx - 2, cy, 4, TILE_SIZE, view)) {
                 ctx.moveTo(cx, cy);
                 ctx.lineTo(cx, getFarmTileWorldY(r + 1) + TILE_SIZE / 2);
                 linksDrawn++;
@@ -1242,25 +1303,105 @@ function drawRanchBuildingBadge(config, level) {
 }
 
 function drawAnimals() {
+    const view = getVisibleWorldRect(42);
+    const benchmarkAnimals = window.PerfDebug?.getBenchmarkAnimals() || [];
+    let seen = 0;
+    let drawn = 0;
     for (const animal of animals) {
-        drawAnimalSprite(ctx, animal);
+        seen++;
+        if (!isWorldRectVisible(animal.x - 26, animal.y - 28, 52, 56, view)) continue;
+        if (shouldSimplifyVisibleUnit(animal, view, drawn, animals.length)) drawSimpleAnimalSprite(animal);
+        else drawAnimalSprite(ctx, animal);
+        drawn++;
     }
+    for (const animal of benchmarkAnimals) {
+        seen++;
+        if (!isWorldRectVisible(animal.x - 26, animal.y - 28, 52, 56, view)) continue;
+        if (shouldSimplifyVisibleUnit(animal, view, drawn, benchmarkAnimals.length)) drawSimpleAnimalSprite(animal);
+        else drawAnimalSprite(ctx, animal);
+        drawn++;
+    }
+    window.PerfDebug?.setCount('animalsSeen', seen);
+    window.PerfDebug?.setCount('animalsDrawn', drawn);
 }
 
 function drawWorkers() {
+    const view = getVisibleWorldRect(74);
+    const benchmarkWorkers = window.PerfDebug?.getBenchmarkWorkers() || [];
+    let seen = 0;
+    let drawn = 0;
     for (const worker of workers) {
+        seen++;
+        if (!isWorldRectVisible(worker.x - 34, worker.y - 52, 68, 78, view)) continue;
+        drawWorker(worker, shouldSimplifyVisibleUnit(worker, view, drawn, workers.length));
+        drawn++;
+    }
+    for (const worker of benchmarkWorkers) {
+        seen++;
+        if (!isWorldRectVisible(worker.x - 34, worker.y - 52, 68, 78, view)) continue;
+        drawWorker(worker, shouldSimplifyVisibleUnit(worker, view, drawn, benchmarkWorkers.length));
+        drawn++;
+    }
+    window.PerfDebug?.setCount('workersSeen', seen);
+    window.PerfDebug?.setCount('workersDrawn', drawn);
+}
+
+function shouldSimplifyVisibleUnit(unit, view, drawnIndex, total) {
+    if (typeof isUnitPerformanceMode !== 'function' || !isUnitPerformanceMode()) return false;
+    if (isPointNearVisibleWorldEdge(unit.x, unit.y, view, 64)) return true;
+    return total > 48 && drawnIndex % 2 === 1;
+}
+
+function isPointNearVisibleWorldEdge(x, y, view, inset) {
+    return x < view.x + inset || x > view.x + view.w - inset || y < view.y + inset || y > view.y + view.h - inset;
+}
+
+function drawSimpleAnimalSprite(animal) {
+    const x = Math.round(animal.x);
+    const y = Math.round(animal.y);
+    const colors = {
+        chicken: ['#fff3c8', '#f39c12'],
+        sheep: ['#f4f1e8', '#2f3136'],
+        cow: ['#fbfbf2', '#2f3136'],
+        pig: ['#f8a5c2', '#ad5d7c'],
+        bee: ['#f1c40f', '#2f3136']
+    };
+    const [body, accent] = colors[animal.type] || colors.chicken;
+    const w = animal.type === 'cow' ? 22 : animal.type === 'bee' ? 9 : animal.type === 'chicken' ? 12 : 17;
+    const h = animal.type === 'cow' ? 14 : animal.type === 'bee' ? 7 : animal.type === 'chicken' ? 12 : 13;
+    const facing = animal.vx >= 0 ? 1 : -1;
+    ctx.fillStyle = body;
+    ctx.fillRect(x - w / 2, y - h / 2, w, h);
+    ctx.fillStyle = accent;
+    if (animal.type === 'bee') {
+        ctx.fillRect(x - 1, y - h / 2, 2, h);
+        return;
+    }
+    ctx.fillRect(facing > 0 ? x + w / 3 : x - w / 2, y - h / 3, Math.max(3, w / 4), Math.max(3, h / 3));
+    ctx.fillRect(x - w / 3, y + h / 2 - 1, 3, 3);
+    ctx.fillRect(x + w / 4, y + h / 2 - 1, 3, 3);
+}
+
+function drawWorker(worker, simplified = false) {
         const x = Math.round(worker.x);
         const y = Math.round(worker.y);
         ctx.save();
-        ctx.fillStyle = worker.type === 'drone' ? 'rgba(58, 64, 62, 0.16)' : 'rgba(58, 42, 30, 0.18)';
-        ctx.beginPath();
-        ctx.ellipse(x, y + 12, worker.type === 'drone' ? 17 : 12, worker.type === 'drone' ? 5 : 6, 0, 0, Math.PI * 2);
-        ctx.fill();
+        if (!simplified) {
+            ctx.fillStyle = worker.type === 'drone' ? 'rgba(58, 64, 62, 0.16)' : 'rgba(58, 42, 30, 0.18)';
+            ctx.beginPath();
+            ctx.ellipse(x, y + 12, worker.type === 'drone' ? 17 : 12, worker.type === 'drone' ? 5 : 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        if (simplified) {
+            drawSimpleWorker(worker, x, y);
+            ctx.restore();
+            return;
+        }
         const spritePath = getWorkerSpritePath(worker);
         const spriteSize = worker.type === 'drone' ? 54 : 50;
         if (drawGeneratedImage(spritePath, x - spriteSize / 2, y - spriteSize + 16, spriteSize, spriteSize)) {
             ctx.restore();
-            continue;
+            return;
         }
         if (worker.type === 'human') {
             ctx.fillStyle = '#7b4a2d';
@@ -1284,7 +1425,25 @@ function drawWorkers() {
             ctx.fillRect(x + 13, y - 2, 7, 3);
         }
         ctx.restore();
+}
+
+function drawSimpleWorker(worker, x, y) {
+    if (worker.type === 'drone') {
+        ctx.fillStyle = '#6f7f7a';
+        ctx.fillRect(x - 11, y - 7, 22, 13);
+        ctx.fillStyle = '#d7ded7';
+        ctx.fillRect(x - 6, y - 4, 12, 7);
+        ctx.fillStyle = '#3f4d45';
+        ctx.fillRect(x - 16, y - 1, 5, 2);
+        ctx.fillRect(x + 11, y - 1, 5, 2);
+        return;
     }
+    ctx.fillStyle = '#7b4a2d';
+    ctx.fillRect(x - 6, y - 17, 12, 5);
+    ctx.fillStyle = '#f4c35f';
+    ctx.fillRect(x - 7, y - 12, 14, 11);
+    ctx.fillStyle = '#4f8c6b';
+    ctx.fillRect(x - 5, y - 1, 10, 11);
 }
 
 function getWorkerSpritePath(worker) {

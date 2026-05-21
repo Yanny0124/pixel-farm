@@ -7,6 +7,7 @@ let lastMouseY = 0;
 let isSpacebarDown = false;
 let touchState = null;
 let touchInfoTimer = null;
+let farmHoverTipKey = '';
 const ANIMAL_TOOL_IDS = ['chicken', 'sheep', 'cow', 'bee', 'pig'];
 const MIN_CAMERA_PAN_ZOOM = 1.01;
 
@@ -76,6 +77,7 @@ function bindInput() {
         if (e.button === 1) e.preventDefault();
     });
     canvas.addEventListener('mousedown', handleCanvasMouseDown);
+    canvas.addEventListener('mouseleave', clearFarmHoverTip);
     canvas.addEventListener('wheel', handleCanvasWheel, { passive: false });
     canvas.addEventListener('touchstart', handleCanvasTouchStart, { passive: false });
     canvas.addEventListener('touchmove', handleCanvasTouchMove, { passive: false });
@@ -154,11 +156,13 @@ function getLastSeedTool() {
     return 'carrot';
 }
 
-function switchBackToLastSeedTool() {
+function switchBackToLastSeedTool(fromAnimalFarm = false) {
     const seedTool = getLastSeedTool();
     currentSelectedTool = seedTool;
     if (typeof uiPreferences !== 'undefined') uiPreferences.lastSeedTool = seedTool;
-    effectText = `已切回 ${CROP_CONFIG[seedTool]?.name || '种子'}`;
+    effectText = fromAnimalFarm
+        ? `当前选择的是动物，已切回 ${CROP_CONFIG[seedTool]?.name || '种子'} 播种`
+        : `已切回 ${CROP_CONFIG[seedTool]?.name || '种子'}`;
     effectAlpha = 1.0;
 }
 
@@ -227,7 +231,7 @@ function handleCanvasMouseDown(e) {
 
     if (isAnimalTool(currentSelectedTool)) {
         if (currentSelectedTool !== 'bee' && isFarmArea(pos.worldX, pos.worldY)) {
-            switchBackToLastSeedTool();
+            switchBackToLastSeedTool(true);
             interactWithFarm(pos.worldX, pos.worldY);
             return;
         }
@@ -351,7 +355,16 @@ function unlockLandPatch(centerRow, centerCol) {
 function handleMouseMove(e) {
     if (canvas) {
         const rect = canvas.getBoundingClientRect();
-        setCanvasUIMouse((e.clientX - rect.left) * (canvas.width / rect.width), (e.clientY - rect.top) * (canvas.height / rect.height));
+        const screen = {
+            x: (e.clientX - rect.left) * (canvas.width / rect.width),
+            y: (e.clientY - rect.top) * (canvas.height / rect.height)
+        };
+        setCanvasUIMouse(screen.x, screen.y);
+        if (e.target === canvas && !isDraggingCamera) {
+            updateFarmHoverTip(screen, screenToWorldPoint(screen.x, screen.y));
+        } else if (e.target !== canvas) {
+            clearFarmHoverTip();
+        }
     }
     if (!isDraggingCamera) return;
     if (!canPanCamera()) {
@@ -510,7 +523,7 @@ function handleCanvasTouchEnd(e) {
                 openVisitorJournal(visitorId);
             } else if (isAnimalTool(currentSelectedTool)) {
                 if (currentSelectedTool !== 'bee' && isFarmArea(touchState.world.x, touchState.world.y)) {
-                    switchBackToLastSeedTool();
+                    switchBackToLastSeedTool(true);
                     interactWithFarm(touchState.world.x, touchState.world.y);
                     return;
                 }
@@ -544,4 +557,83 @@ function getTouchGesture(touches) {
         centerY,
         distance: Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY)
     };
+}
+
+function updateFarmHoverTip(screen, world) {
+    if (!window.uiState || window.uiState.activePanel || window.uiState.settingsOpen || window.uiState.activeStoryPopup || window.uiState.npcArrivalPopup) {
+        return clearFarmHoverTip();
+    }
+    const target = typeof getFarmCellAtWorld === 'function' ? getFarmCellAtWorld(world.x, world.y) : null;
+    const cell = target ? gridData[target.row]?.[target.col] : null;
+    const tip = cell ? getFarmHoverTip(target.row, target.col, cell) : null;
+    if (!tip) return clearFarmHoverTip();
+    const key = `${target.row}:${target.col}:${tip.title}:${tip.line1}:${tip.line2}`;
+    const changed = key !== farmHoverTipKey;
+    farmHoverTipKey = key;
+    window.uiState.tileTip = {
+        x: screen.x + 12,
+        y: screen.y + 12,
+        title: tip.title,
+        line1: tip.line1,
+        line2: tip.line2,
+        hover: true,
+        until: Date.now() + 260
+    };
+    if (changed && typeof window.refreshBitcnDomUi === 'function') window.refreshBitcnDomUi();
+}
+
+function getFarmHoverTip(row, col, cell) {
+    if (cell.state === 0) {
+        if (isSeedTool(currentSelectedTool)) {
+            const crop = CROP_CONFIG[currentSelectedTool];
+            return {
+                title: `点击种植 ${crop?.name || '种子'}`,
+                line1: `当前种子：${crop?.icon || ''} ${crop?.name || currentSelectedTool}`,
+                line2: '左侧农田空地可以播种'
+            };
+        }
+        if (isAnimalTool(currentSelectedTool)) {
+            return {
+                title: '当前选择的是动物',
+                line1: '请切换种子播种',
+                line2: '点农田会自动切回上次种子'
+            };
+        }
+        return null;
+    }
+    if (cell.state === 1) {
+        return getGrowingFarmHoverTip(cell);
+    }
+    if (cell.state === 2) {
+        const crop = CROP_CONFIG[cell.cropType];
+        return {
+            title: '点击收获',
+            line1: `${crop?.icon || ''} ${crop?.name || '作物'} 已成熟`,
+            line2: `地块 (${row + 1}, ${col + 1})`
+        };
+    }
+    if (cell.state === 4) {
+        const parent = gridData[cell.parentRow]?.[cell.parentCol];
+        if (parent?.state === 2) return getFarmHoverTip(cell.parentRow, cell.parentCol, parent);
+        if (parent?.state === 1) return getGrowingFarmHoverTip(parent);
+    }
+    return null;
+}
+
+function getGrowingFarmHoverTip(cell) {
+    const crop = CROP_CONFIG[cell.cropType];
+    const duration = Math.max(1, getActualGrowTime(cell.cropType) / getGrowthMultiplier());
+    const percent = Math.max(0, Math.min(99, Math.floor(((Date.now() - cell.timer) / duration) * 100)));
+    return {
+        title: `成长中 ${percent}%`,
+        line1: `${crop?.icon || ''} ${crop?.name || '作物'}`,
+        line2: '成熟后点击收获'
+    };
+}
+
+function clearFarmHoverTip() {
+    farmHoverTipKey = '';
+    if (!window.uiState?.tileTip?.hover) return;
+    window.uiState.tileTip = null;
+    if (typeof window.refreshBitcnDomUi === 'function') window.refreshBitcnDomUi();
 }

@@ -56,18 +56,41 @@ function updateSkillButtons(now) {
 }
 
 function gameLoop() {
+    const perf = window.PerfDebug;
+    if (perf) perf.beginFrame();
+    const logicStart = getPerfNow();
     updateLogic();
+    if (perf) perf.recordDuration('update', getPerfNow() - logicStart);
+    const renderStart = getPerfNow();
     renderFrame();
+    if (perf) perf.recordDuration('render', getPerfNow() - renderStart);
+    const domStart = getPerfNow();
     if (typeof window.refreshBitcnDomUi === 'function') window.refreshBitcnDomUi();
+    if (perf) {
+        perf.recordDuration('dom', getPerfNow() - domStart);
+        perf.endFrame();
+    }
     requestAnimationFrame(gameLoop);
 }
 
-function startGame() {
+function getPerfNow() {
+    return typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+}
+
+async function startGame() {
+    showLoadingScreen();
     initRenderer();
+    try {
+        await preloadGameAssets(updateLoadingScreen);
+    } catch (error) {
+        console.warn('[Assets] Essential preload failed. Starting with renderer fallbacks.', error);
+    }
     bindInput();
     loadGame();
     setInterval(updateMarket, 10000);
     setInterval(saveGame, 5000);
+    renderFrame();
+    hideLoadingScreen();
     gameLoop();
 }
 

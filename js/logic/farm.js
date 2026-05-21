@@ -18,16 +18,10 @@ function getActualGrowTime(cropType) {
 }
 
 function plantCell(cell, cropType, now) {
-    if (!CROP_CONFIG[cropType] || CROP_CONFIG[cropType].seedPrice === undefined) return false;
-    if (!isItemUnlocked(cropType)) return false;
+    if (!canPlantCropAtCell(cell, cropType)) return false;
     let actualCropType = mutationState.pending[cropType] || cropType;
     const config = CROP_CONFIG[actualCropType];
     const position = findCellPosition(cell);
-    if (actualCropType === 'pumpkin' && !canReserveLargeCrop(position?.row, position?.col)) {
-        effectText = '南瓜需要右下相邻 2x2 空地';
-        effectAlpha = 1.0;
-        return false;
-    }
     const seedCost = CROP_CONFIG[cropType].seedPrice;
     if (coins < seedCost) return false;
     coins -= seedCost;
@@ -43,6 +37,20 @@ function plantCell(cell, cropType, now) {
     cell.cropType = actualCropType;
     if (actualCropType === 'pumpkin') reserveLargeCrop(position.row, position.col, actualCropType, now);
     return true;
+}
+
+function canPlantCropAtCell(cell, cropType, options = {}) {
+    if (!cell || cell.state !== 0) return false;
+    if (!CROP_CONFIG[cropType] || CROP_CONFIG[cropType].seedPrice === undefined) return false;
+    if (!isItemUnlocked(cropType)) return false;
+    const actualCropType = mutationState.pending[cropType] || cropType;
+    const position = actualCropType === 'pumpkin' ? findCellPosition(cell) : null;
+    if (actualCropType !== 'pumpkin' || canReserveLargeCrop(position?.row, position?.col)) return true;
+    if (!options.quiet) {
+        effectText = '南瓜需要右下相邻 2x2 空地';
+        effectAlpha = 1.0;
+    }
+    return false;
 }
 
 function findCellPosition(targetCell) {

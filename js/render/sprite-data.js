@@ -39,13 +39,33 @@ const ANIMAL_PALETTES = {
     pig: { body: '#f8a5c2', accent: '#f78fb3', dark: '#ad5d7c' }
 };
 
+const cropSpriteCache = new Map();
+
 function drawCropSprite(ctx, cropType, stage, x, y, cellSize) {
+    const now = typeof getRenderNow === 'function' ? getRenderNow() : Date.now();
+    const sway = Math.sin(now / 260 + x * 0.03 + y * 0.02) > 0 ? 1 : 0;
+    const key = `${cropType}|${stage}|${cellSize}|${sway}`;
+    let sprite = cropSpriteCache.get(key);
+    if (!sprite) {
+        sprite = document.createElement('canvas');
+        sprite.width = cellSize;
+        sprite.height = cellSize;
+        const spriteCtx = sprite.getContext('2d');
+        spriteCtx.imageSmoothingEnabled = false;
+        drawCropSpritePixels(spriteCtx, cropType, stage, 0, 0, cellSize, sway);
+        cropSpriteCache.set(key, sprite);
+        window.PerfDebug?.bumpCount('cropSpriteCacheMisses');
+    } else {
+        window.PerfDebug?.bumpCount('cropSpriteCacheHits');
+    }
+    ctx.drawImage(sprite, Math.round(x), Math.round(y), cellSize, cellSize);
+}
+
+function drawCropSpritePixels(ctx, cropType, stage, x, y, cellSize, sway) {
     const palette = CROP_STAGE_PALETTES[cropType] || CROP_STAGE_PALETTES.wheat;
     const px = Math.floor(cellSize / 16);
     const ox = x + Math.floor((cellSize - px * 16) / 2);
     const oy = y + Math.floor((cellSize - px * 16) / 2);
-    const now = typeof getRenderNow === 'function' ? getRenderNow() : Date.now();
-    const sway = Math.sin(now / 260 + x * 0.03 + y * 0.02) > 0 ? 1 : 0;
     const color = palette[Math.min(stage, palette.length - 1)];
 
     if (stage <= 0) {

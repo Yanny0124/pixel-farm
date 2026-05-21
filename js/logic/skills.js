@@ -48,14 +48,29 @@ window.useSkill = function(skillId) {
 };
 
 function useSowSkill(now) {
-    if (['chicken', 'sheep', 'cow', 'bee', 'pig'].includes(currentSelectedTool)) return;
+    const sowTool = getSowSkillSeedTool();
+    if (!sowTool) {
+        effectText = '请先选择一种已解锁的种子再播种';
+        return;
+    }
+    if (currentSelectedTool !== sowTool && typeof selectTool === 'function') {
+        selectTool(sowTool);
+    }
     let plantedCount = 0;
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
-            if (gridData[r][c].state === 0 && plantCell(gridData[r][c], currentSelectedTool, now)) plantedCount++;
+            if (gridData[r][c].state === 0 && plantCell(gridData[r][c], sowTool, now)) plantedCount++;
         }
     }
     if (plantedCount > 0) effectText = `🌱 播下了 ${plantedCount} 颗种子！`;
+}
+
+function getSowSkillSeedTool() {
+    const currentIsSeed = typeof isSeedTool === 'function'
+        ? isSeedTool(currentSelectedTool)
+        : CROP_CONFIG[currentSelectedTool]?.seedPrice !== undefined;
+    if (currentIsSeed && isItemUnlocked(currentSelectedTool)) return currentSelectedTool;
+    return typeof getAutoSowSeedTool === 'function' ? getAutoSowSeedTool() : null;
 }
 
 function useHarvestSkill() {

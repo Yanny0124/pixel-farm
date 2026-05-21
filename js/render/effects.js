@@ -22,7 +22,10 @@ function spawnHarvestEffects(row, col, config, options = {}) {
     const x = (typeof getFarmTileWorldX === 'function' ? getFarmTileWorldX(col) : farmStartX + col * TILE_SIZE) + TILE_SIZE / 2;
     const y = (typeof getFarmTileWorldY === 'function' ? getFarmTileWorldY(row) : farmStartY + row * TILE_SIZE) + TILE_SIZE / 2;
     const defaultCount = options.bulk ? 2 : 10;
-    const particleCount = Math.max(0, Math.min(10, Number.isFinite(options.particleCount) ? options.particleCount : defaultCount));
+    const requestedCount = Math.max(0, Math.min(10, Number.isFinite(options.particleCount) ? options.particleCount : defaultCount));
+    const particleCount = typeof isUnitPerformanceMode === 'function' && isUnitPerformanceMode()
+        ? Math.max(1, Math.ceil(requestedCount * 0.55))
+        : requestedCount;
     for (let i = 0; i < particleCount; i++) {
         particles.push({
             x,
@@ -34,7 +37,8 @@ function spawnHarvestEffects(row, col, config, options = {}) {
         });
     }
     trimEffectList(particles, MAX_PARTICLES);
-    if (!options.bulk) addFloatingText({ x, y, text: `+${config.icon}`, life: 90, color: '#f1c40f' });
+    const crowdedPerformanceFx = typeof isUnitPerformanceMode === 'function' && isUnitPerformanceMode() && floatingTexts.length >= Math.floor(MAX_FLOATING_TEXTS / 2);
+    if (!options.bulk && !crowdedPerformanceFx) addFloatingText({ x, y, text: `+${config.icon}`, life: 90, color: '#f1c40f' });
 }
 
 function configKeyByName(config) {
@@ -90,27 +94,47 @@ function updateEffects() {
 }
 
 function drawEffects(ctx) {
-    drawResonanceBursts(ctx);
-    for (const p of particles) {
+    const view = typeof getVisibleWorldRect === 'function' ? getVisibleWorldRect(46) : null;
+    const counters = { seen: 0, drawn: 0 };
+    drawResonanceBursts(ctx, resonanceBursts, view, counters);
+    drawResonanceBursts(ctx, window.PerfDebug?.getBenchmarkEffects('bursts') || [], view, counters);
+    drawParticles(ctx, particles, view, counters);
+    drawParticles(ctx, window.PerfDebug?.getBenchmarkEffects('particles') || [], view, counters);
+    drawFloatingTexts(ctx, floatingTexts, view, counters);
+    drawFloatingTexts(ctx, window.PerfDebug?.getBenchmarkEffects('texts') || [], view, counters);
+    window.PerfDebug?.setCount('effectsSeen', counters.seen);
+    window.PerfDebug?.setCount('effectsDrawn', counters.drawn);
+}
+
+function drawParticles(ctx, list, view, counters) {
+    for (const p of list) {
+        counters.seen++;
+        if (view && typeof isWorldPointVisible === 'function' && !isWorldPointVisible(p.x, p.y, 0, view)) continue;
         ctx.globalAlpha = Math.max(0, p.life / 45);
         ctx.fillStyle = p.color;
         ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+        counters.drawn++;
     }
     ctx.globalAlpha = 1;
+}
 
+function drawFloatingTexts(ctx, list, view, counters) {
     ctx.font = 'bold 16px Arial';
     ctx.textAlign = 'center';
-    for (const text of floatingTexts) {
+    for (const text of list) {
+        counters.seen++;
+        if (view && typeof isWorldPointVisible === 'function' && !isWorldPointVisible(text.x, text.y, 0, view)) continue;
         ctx.globalAlpha = Math.max(0, text.life / 90);
         ctx.fillStyle = text.color;
         ctx.fillText(text.text, text.x, text.y);
+        counters.drawn++;
     }
     ctx.globalAlpha = 1;
     ctx.textAlign = 'left';
 }
 
-function drawResonanceBursts(ctx) {
-    for (const burst of resonanceBursts) {
+function drawResonanceBursts(ctx, bursts = resonanceBursts, view = null, counters = { seen: 0, drawn: 0 }) {
+    for (const burst of bursts) {
         const alpha = Math.max(0, burst.life / burst.maxLife);
         ctx.save();
         ctx.globalAlpha = alpha;
@@ -118,12 +142,15 @@ function drawResonanceBursts(ctx) {
         ctx.lineWidth = 3;
         ctx.beginPath();
         for (const cell of burst.cells) {
+            counters.seen++;
             const cx = (typeof getFarmTileWorldX === 'function' ? getFarmTileWorldX(cell.col) : farmStartX + cell.col * TILE_SIZE) + TILE_SIZE / 2;
             const cy = (typeof getFarmTileWorldY === 'function' ? getFarmTileWorldY(cell.row) : farmStartY + cell.row * TILE_SIZE) + TILE_SIZE / 2;
+            if (view && typeof isWorldRectVisible === 'function' && !isWorldRectVisible(cx - 12, cy - 12, 24, 24, view)) continue;
             ctx.moveTo(cx - 10, cy);
             ctx.lineTo(cx + 10, cy);
             ctx.moveTo(cx, cy - 10);
             ctx.lineTo(cx, cy + 10);
+            counters.drawn++;
         }
         ctx.stroke();
         ctx.restore();

@@ -2,6 +2,14 @@
 // Logic/Economy: 市场与订单
 // ==========================================
 const ORDER_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const MARKET_BUY_BLOCKED_ITEMS = new Set([
+    'goldenEgg',
+    'goldenWool',
+    'goldenMilk',
+    'royalHoney',
+    'blackTruffle',
+    'hardwood'
+]);
 
 function getNextFixedOrderRefreshAt(now = Date.now()) {
     const interval = ORDER_REFRESH_INTERVAL_MS;
@@ -211,7 +219,7 @@ window.sellItem = function(itemId) {
     if (sellAmount > 0) {
         const config = CROP_CONFIG[itemId];
         if (!config) return;
-        const unitPrice = Math.max(1, Math.floor((marketState[itemId]?.price || config.basePrice || 0) * getCategoryPriceMultiplier(itemId)));
+        const unitPrice = getMarketSellUnitPrice(itemId);
         coins += sellAmount * unitPrice;
         inventory[itemId] -= sellAmount;
         updateUI();
@@ -227,7 +235,7 @@ function sellItemAmount(itemId, amount) {
     if (isNaN(sellAmount) || sellAmount <= 0) return;
     sellAmount = Math.min(sellAmount, inventory[itemId] || 0);
     if (sellAmount <= 0) return;
-    const unitPrice = Math.max(1, Math.floor((marketState[itemId]?.price || config.basePrice || 0) * getCategoryPriceMultiplier(itemId)));
+    const unitPrice = getMarketSellUnitPrice(itemId);
     coins += sellAmount * unitPrice;
     inventory[itemId] -= sellAmount;
     effectText = `📈 卖出 ${config.name} x${sellAmount}，获得 ${sellAmount * unitPrice} 币`;
@@ -235,6 +243,87 @@ function sellItemAmount(itemId, amount) {
     playSound('sell');
     updateUI();
     saveGame();
+}
+
+function getMarketSellUnitPrice(itemId) {
+    const config = CROP_CONFIG[itemId];
+    if (!config || !Number.isFinite(config.basePrice) || config.basePrice <= 0) return 0;
+    const marketPrice = marketState[itemId]?.price;
+    const base = Number.isFinite(marketPrice) && marketPrice > 0 ? marketPrice : config.basePrice;
+    const multiplier = typeof getCategoryPriceMultiplier === 'function' ? getCategoryPriceMultiplier(itemId) : 1;
+    return Math.max(1, Math.floor(base * (Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1)));
+}
+
+function isMarketRecipeOutput(itemId) {
+    const recipes = typeof RECIPE_CONFIG !== 'undefined' ? RECIPE_CONFIG : {};
+    return Object.values(recipes).some(recipe => recipe.output === itemId);
+}
+
+function isMarketAnimalProduct(itemId) {
+    const buildings = typeof RANCH_BUILDING_CONFIG !== 'undefined' ? RANCH_BUILDING_CONFIG : {};
+    return Object.values(buildings).some(building => building.product === itemId);
+}
+
+function isMarketItemBuyable(itemId) {
+    const config = CROP_CONFIG[itemId];
+    if (!config || config.noSell || !Number.isFinite(config.basePrice) || config.basePrice <= 0) return false;
+    if (!isMarketItemUnlocked(itemId)) return false;
+    if (!isItemUnlocked(itemId)) return false;
+    if (MARKET_BUY_BLOCKED_ITEMS.has(itemId)) return false;
+    if (config.variantOf || config.rarity || config.hidden) return false;
+    return config.seedPrice !== undefined
+        || isMarketRecipeOutput(itemId)
+        || isMarketAnimalProduct(itemId)
+        || itemId === 'wood';
+}
+
+function getMarketBuyMultiplier(itemId) {
+    if (isMarketRecipeOutput(itemId)) return 6;
+    if (isMarketAnimalProduct(itemId) || itemId === 'wood') return 5;
+    return 4;
+}
+
+function getMarketBuyUnitPrice(itemId) {
+    if (!isMarketItemBuyable(itemId)) return 0;
+    const sellPrice = getMarketSellUnitPrice(itemId);
+    if (!Number.isFinite(sellPrice) || sellPrice <= 0) return 0;
+    return Math.max(sellPrice + 1, Math.ceil(sellPrice * getMarketBuyMultiplier(itemId)));
+}
+
+function getMarketBuyMaxAffordable(itemId) {
+    const unitPrice = getMarketBuyUnitPrice(itemId);
+    const balance = Number(coins);
+    if (!unitPrice || !Number.isFinite(balance) || balance <= 0) return 0;
+    return Math.max(0, Math.floor(balance / unitPrice));
+}
+
+function normalizeMarketBuyAmount(itemId, amount) {
+    const affordable = getMarketBuyMaxAffordable(itemId);
+    if (amount === 'max') return affordable;
+    const requested = Math.floor(Number(amount));
+    if (!Number.isFinite(requested) || requested <= 0) return 0;
+    return requested <= affordable ? requested : 0;
+}
+
+function buyItemAmount(itemId, amount) {
+    if (!isMarketItemBuyable(itemId)) return false;
+    const config = CROP_CONFIG[itemId];
+    const unitPrice = getMarketBuyUnitPrice(itemId);
+    const buyAmount = normalizeMarketBuyAmount(itemId, amount);
+    const currentCoins = Number(coins);
+    const currentStock = Number(inventory[itemId]);
+    if (!config || !unitPrice || buyAmount <= 0) return false;
+    if (!Number.isFinite(currentCoins) || currentCoins < unitPrice * buyAmount) return false;
+    if (!Number.isFinite(currentStock) || currentStock < 0) inventory[itemId] = 0;
+    coins = currentCoins - unitPrice * buyAmount;
+    inventory[itemId] = (Number(inventory[itemId]) || 0) + buyAmount;
+    effectText = `市场买入 ${config.name} x${buyAmount}，花费 ${unitPrice * buyAmount} 币`;
+    effectAlpha = 1.0;
+    playSound('sell');
+    recordDiary(`市场买入 ${config.name} x${buyAmount}`);
+    updateUI();
+    saveGame();
+    return true;
 }
 
 function getRecipeByOutput(itemId) {
